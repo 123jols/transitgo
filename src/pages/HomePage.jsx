@@ -3,6 +3,9 @@ import { searchStops, findRoutes, getPopularRoutes } from "../api/transit";
 import { useLang } from "../context/LanguageContext";
 import LangSwitcher from "../components/LangSwitcher";
 
+
+
+
 const USER_TYPES = [
   { id: "regular", label: "Regular", discount: 0, icon: "ti-user" },
   { id: "student", label: "Student", discount: 0.2, icon: "ti-school" },
@@ -173,6 +176,14 @@ export default function HomePage({ onViewRoute }) {
             })}
           </>
         )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.5rem", position: "relative" }}>
+  <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.12)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <i className="ti ti-map-2" style={{ fontSize: 18, color: "#64b5f6" }} />
+  </div>
+  <span style={{ fontSize: 18, fontWeight: 500 }}>TransitGo</span>
+</div>
+<LangSwitcher />
 
         {/* Popular routes */}
         {!searched && (
