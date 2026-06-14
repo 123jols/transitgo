@@ -34,3 +34,4 @@ export function addRoute(route) {
   routes[key].push(route);
   localStorage.setItem("transitgo-routes", JSON.stringify(routes));
 }
+

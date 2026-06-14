@@ -4,6 +4,7 @@ import HomePage from "./pages/HomePage";
 import RouteDetailsPage from "./pages/RouteDetailsPage";
 import useOfflineRoutes from "./hooks/useOfflineRoutes";
 import OfflineBanner from "./components/OfflineBanner";
+import AiChat from "./components/AiChat"; <AiChat />
 
 export default function App() {
   const { isOnline } = useOfflineRoutes();
