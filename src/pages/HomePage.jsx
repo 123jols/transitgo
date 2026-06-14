@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { searchStops, findRoutes, getPopularRoutes } from "../api/transit";
+import { useLang } from "../context/LanguageContext";
+import LangSwitcher from "../components/LangSwitcher";
 
 const USER_TYPES = [
   { id: "regular", label: "Regular", discount: 0, icon: "ti-user" },
@@ -9,6 +11,7 @@ const USER_TYPES = [
 ];
 
 export default function HomePage({ onViewRoute }) {
+  const { t } = useLang();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [fromId, setFromId] = useState("");
@@ -64,7 +67,7 @@ export default function HomePage({ onViewRoute }) {
           <span style={{ fontSize: 18, fontWeight: 500 }}>TransitGo</span>
         </div>
 
-        <div style={{ fontSize: 22, fontWeight: 500, marginBottom: 4, position: "relative" }}>Where are you going?</div>
+        <div style={{ fontSize: 22, fontWeight: 500, marginBottom: 4, position: "relative" }}>t.whereGoing?</div>
         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: "1.25rem", position: "relative" }}>Find routes · Live ETAs · Cebu</div>
 
         {/* Search box */}
