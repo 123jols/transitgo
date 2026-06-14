@@ -70,8 +70,8 @@ export default function HomePage({ onViewRoute }) {
           <span style={{ fontSize: 18, fontWeight: 500 }}>TransitGo</span>
         </div>
 
-        <div style={{ fontSize: 22, fontWeight: 500, marginBottom: 4, position: "relative" }}>t.whereGoing?</div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: "1.25rem", position: "relative" }}>Find routes · Live ETAs · Cebu</div>
+        <div style={{ fontSize: 22, fontWeight: 500, marginBottom: 4, position: "relative" }}>{t.whereGoing}</div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: "1.25rem", position: "relative" }}>{t.findRoutes} · Live ETAs · Cebu</div>
 
         {/* Search box */}
         <div style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.13)", borderRadius: 16, padding: "0.875rem", position: "relative" }}>
@@ -106,7 +106,7 @@ export default function HomePage({ onViewRoute }) {
           <div style={{ position: "relative", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "10px 12px" }}>
               <i className="ti ti-map-pin" style={{ color: "#4db6ac", fontSize: 18 }} />
-              <input value={to} onChange={(e) => handleToChange(e.target.value)} placeholder="Where to?" style={{ flex: 1, fontSize: 15, color: "#fff", background: "transparent" }} />
+              <input value={to} onChange={(e) => handleToChange(e.target.value)} placeholder="{t.whereTo}?" style={{ flex: 1, fontSize: 15, color: "#fff", background: "transparent" }} />
               {toId && <i className="ti ti-check" style={{ color: "#69f0ae", fontSize: 15 }} />}
             </div>
             {toResults.length > 0 && (
@@ -188,7 +188,7 @@ export default function HomePage({ onViewRoute }) {
         {/* Popular routes */}
         {!searched && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.75rem" }}>Popular routes</div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.75rem" }}>{t.popularRoutes}</div>
             {popular.map((p, i) => (
               <div key={i} style={{ background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "0.875rem 1rem", marginBottom: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
                 onClick={() => { setFrom(p.from?.name || ""); setFromId(p.from?.id || ""); setTo(p.to?.name || ""); setToId(p.to?.id || ""); }}>
