@@ -4,7 +4,7 @@ import HomePage from "./pages/HomePage";
 import RouteDetailsPage from "./pages/RouteDetailsPage";
 import useOfflineRoutes from "./hooks/useOfflineRoutes";
 import OfflineBanner from "./components/OfflineBanner";
-import AiChat from "./components/AiChat"; <AiChat />
+import AiChat from "./components/AiChat";
 
 export default function App() {
   const { isOnline } = useOfflineRoutes();
@@ -35,6 +35,7 @@ export default function App() {
           onBack={() => setPage("home")}
         />
       )}
+      <AiChat />
     </>
   );
 }
