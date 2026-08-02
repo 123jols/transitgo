@@ -1,24 +1,35 @@
-/* ── Glassmorphic Night Theme ─────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap');
+/* ── Route Board Theme ─────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
 
 :root {
-  --bg-base: #080f1a;
-  --bg-surface: rgba(255, 255, 255, 0.06);
-  --bg-surface-hover: rgba(255, 255, 255, 0.10);
-  --bg-elevated: rgba(255, 255, 255, 0.12);
-  --border: rgba(255, 255, 255, 0.12);
-  --border-strong: rgba(255, 255, 255, 0.22);
-  --accent-blue: #64b5f6;
-  --accent-blue-deep: #1976d2;
-  --accent-teal: #4db6ac;
-  --accent-amber: #ffb74d;
-  --accent-green: #69f0ae;
-  --accent-red: #ef5350;
+  --bg-base: #0a0e14;
+  --bg-surface: rgba(255, 255, 255, 0.045);
+  --bg-surface-hover: rgba(255, 255, 255, 0.08);
+  --bg-elevated: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.20);
+
+  /* jeepney livery amber — primary accent */
+  --primary: #e2a53a;
+  --primary-deep: #c98a24;
+  --primary-ink: #1a1408;
+
+  /* secondary route/status colors */
+  --accent-blue: #5b93c9;
+  --accent-teal: #4fae94;
+  --accent-green: #5fcf8e;
+  --accent-red: #e5534b;
+
   --text-primary: rgba(255, 255, 255, 0.95);
-  --text-secondary: rgba(255, 255, 255, 0.55);
-  --text-muted: rgba(255, 255, 255, 0.30);
+  --text-secondary: rgba(255, 255, 255, 0.58);
+  --text-muted: rgba(255, 255, 255, 0.32);
+
   --font-mono: 'Fira Code', monospace;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  --radius-tag: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
 }
 
 /* ── Reset ────────────────────────────────────────────────────────────── */
@@ -92,19 +103,17 @@ button {
   to { transform: rotate(360deg); }
 }
 
-/* ── Glass card utility ───────────────────────────────────────────────── */
+/* ── Flat card utility (no blur) ─────────────────────────────────────── */
 .glass {
   background: var(--bg-surface);
-  border: 0.5px solid var(--border);
-  border-radius: 16px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 
 .glass-strong {
   background: var(--bg-elevated);
-  border: 0.5px solid var(--border-strong);
-  border-radius: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
 }
 
 /* ── Page animation ───────────────────────────────────────────────────── */
@@ -112,47 +121,33 @@ button {
   animation: slideUp 0.3s ease forwards;
 }
 
-/* ── Mono numbers (ETAs, fares) ───────────────────────────────────────── */
+/* ── Mono numbers (ETAs, fares, route codes) ─────────────────────────── */
 .mono {
   font-family: var(--font-mono);
 }
 
-/* ── Ambient glow blobs ───────────────────────────────────────────────── */
-.glow-blue {
-  position: absolute;
-  width: 260px;
-  height: 260px;
-  border-radius: 50%;
-  background: rgba(25, 118, 210, 0.12);
-  filter: blur(70px);
-  pointer-events: none;
-}
-
-.glow-teal {
-  position: absolute;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: rgba(0, 137, 123, 0.10);
-  filter: blur(60px);
-  pointer-events: none;
-}
-
-/* ── Route type badges ────────────────────────────────────────────────── */
-.badge-blue   { background: rgba(100,181,246,0.15); color: #64b5f6; }
-.badge-green  { background: rgba(105,240,174,0.15); color: #69f0ae; }
-.badge-orange { background: rgba(255,183,77,0.15);  color: #ffb74d; }
-.badge-teal   { background: rgba(77,182,172,0.15);  color: #4db6ac; }
-.badge-best   { background: #1976d2; color: #fff; }
+/* ── Route type tags (rectangular, not pills) ────────────────────────── */
+.badge-jeepney { background: rgba(226,165,58,0.16); color: var(--primary); }
+.badge-bus     { background: rgba(91,147,201,0.16); color: var(--accent-blue); }
+.badge-walk    { background: rgba(79,174,148,0.16); color: var(--accent-teal); }
+.badge-best    { background: var(--primary); color: var(--primary-ink); }
 
 /* ── Section labels ───────────────────────────────────────────────────── */
 .section-label {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
   margin-bottom: 0.75rem;
+}
+
+/* ── Secondary field label (not uppercase — variety from section-label) ── */
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
 }
 
 /* ── Live pulse dot ───────────────────────────────────────────────────── */
@@ -173,7 +168,7 @@ button {
   transform: translateX(-50%);
   width: 100%;
   max-width: 420px;
-  background: #b71c1c;
+  background: var(--accent-red);
   color: #fff;
   font-size: 13px;
   font-weight: 500;

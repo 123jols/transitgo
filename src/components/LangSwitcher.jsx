@@ -11,17 +11,17 @@ export default function LangSwitcher() {
           key={l.id}
           onClick={() => changeLang(l.id)}
           style={{
-            padding: "4px 10px",
-            borderRadius: 20,
-            border: "0.5px solid",
+            padding: "4px 9px",
+            borderRadius: 4,
+            border: "1px solid",
             borderColor: lang === l.id
-              ? "rgba(100,181,246,0.5)"
+              ? "rgba(226,165,58,0.5)"
               : "rgba(255,255,255,0.12)",
             background: lang === l.id
-              ? "rgba(100,181,246,0.15)"
+              ? "rgba(226,165,58,0.15)"
               : "rgba(255,255,255,0.05)",
             color: lang === l.id
-              ? "#64b5f6"
+              ? "#e2a53a"
               : "rgba(255,255,255,0.5)",
             fontSize: 12,
             fontWeight: 500,
