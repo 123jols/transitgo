@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Fira+Code:wght@400;500&display=swap');
 
 * {
@@ -673,10 +674,149 @@ button:active {
 }
 
 .control-group label {
+=======
+/* ── Route Board Theme ─────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
+
+:root {
+  --bg-base: #0a0e14;
+  --bg-surface: rgba(255, 255, 255, 0.045);
+  --bg-surface-hover: rgba(255, 255, 255, 0.08);
+  --bg-elevated: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.20);
+
+  /* jeepney livery amber — primary accent */
+  --primary: #e2a53a;
+  --primary-deep: #c98a24;
+  --primary-ink: #1a1408;
+
+  /* secondary route/status colors */
+  --accent-blue: #5b93c9;
+  --accent-teal: #4fae94;
+  --accent-green: #5fcf8e;
+  --accent-red: #e5534b;
+
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.58);
+  --text-muted: rgba(255, 255, 255, 0.32);
+
+  --font-mono: 'Fira Code', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  --radius-tag: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+/* ── Inputs & Buttons ─────────────────────────────────────────────────── */
+input {
+  font-family: var(--font-sans);
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+button {
+  font-family: var(--font-sans);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* ── Animations ───────────────────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateX(-50%) translateY(-100%); }
+  to   { transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Flat card utility (no blur) ─────────────────────────────────────── */
+.glass {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.glass-strong {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+/* ── Page animation ───────────────────────────────────────────────────── */
+.page-enter {
+  animation: slideUp 0.3s ease forwards;
+}
+
+/* ── Mono numbers (ETAs, fares, route codes) ─────────────────────────── */
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Route type tags (rectangular, not pills) ────────────────────────── */
+.badge-jeepney { background: rgba(226,165,58,0.16); color: var(--primary); }
+.badge-bus     { background: rgba(91,147,201,0.16); color: var(--accent-blue); }
+.badge-walk    { background: rgba(79,174,148,0.16); color: var(--accent-teal); }
+.badge-best    { background: var(--primary); color: var(--primary-ink); }
+
+/* ── Section labels ───────────────────────────────────────────────────── */
+.section-label {
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+<<<<<<< HEAD
   color: #7a8ba3;
 }
 
@@ -1067,4 +1207,46 @@ button:active {
   .ai-meta {
     grid-template-columns: 1fr;
   }
+=======
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+/* ── Secondary field label (not uppercase — variety from section-label) ── */
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+/* ── Live pulse dot ───────────────────────────────────────────────────── */
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse 1.8s infinite ease-in-out;
+  display: inline-block;
+}
+
+/* ── Offline banner ───────────────────────────────────────────────────── */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 420px;
+  background: var(--accent-red);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 999;
+  animation: slideDown 0.25s ease-out;
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
 }

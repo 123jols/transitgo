@@ -137,6 +137,7 @@ export default function AiChat() {
       <button
         onClick={() => setOpen(!open)}
         style={{
+<<<<<<< HEAD
           position: "fixed", bottom: "max(20px, env(safe-area-inset-bottom))", right: 16,
           width: 48, height: 48, borderRadius: "50%",
           background: "#1976d2",
@@ -144,16 +145,30 @@ export default function AiChat() {
           cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 8px 20px rgba(21, 66, 130, 0.28)",
+=======
+          position: "fixed", bottom: 80, right: 20,
+          width: 48, height: 48, borderRadius: "50%",
+          background: "#131a24",
+          border: "1px solid rgba(226,165,58,0.4)",
+          cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
           zIndex: 300,
         }}
       >
         <i className={`ti ${open ? "ti-x" : "ti-message-circle"}`}
+<<<<<<< HEAD
            style={{ fontSize: 20, color: "#fff" }} />
+=======
+           style={{ fontSize: 20, color: "#e2a53a" }} />
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
       </button>
 
       {/* Chat window */}
       {open && (
         <div style={{
+<<<<<<< HEAD
           position: "fixed",
           bottom: "max(78px, calc(env(safe-area-inset-bottom) + 78px))",
           right: 16, left: 16, margin: "0 auto",
@@ -174,6 +189,24 @@ export default function AiChat() {
               <span style={{ fontFamily: "'Fira Code', monospace", fontSize: 10, fontWeight: 600, color: "#1976d2" }}>TG</span>
             </div>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#16233b" }}>TransitGo Assistant</div>
+=======
+          position: "fixed", bottom: 138, right: 20,
+          width: 300, maxHeight: 420,
+          background: "#0d1420",
+          border: "1px solid rgba(255,255,255,0.14)",
+          borderRadius: 8,
+          display: "flex", flexDirection: "column",
+          overflow: "hidden", zIndex: 300,
+          boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
+        }}>
+
+          {/* Header */}
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 9 }}>
+            <div style={{ width: 26, height: 20, border: "1.5px solid #e2a53a", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontFamily: "'Fira Code', monospace", fontSize: 10, fontWeight: 600, color: "#e2a53a" }}>TG</span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>TransitGo Assistant</div>
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
           </div>
 
           {/* Messages */}
@@ -183,10 +216,17 @@ export default function AiChat() {
                 <div style={{
                   maxWidth: "80%",
                   padding: "8px 12px",
+<<<<<<< HEAD
                   borderRadius: msg.role === "user" ? "10px 10px 2px 10px" : "10px 10px 10px 2px",
                   background: msg.role === "user" ? "#1976d2" : "#f5f9fd",
                   border: msg.role === "user" ? "none" : "1px solid rgba(21, 101, 192, 0.10)",
                   fontSize: 13, color: msg.role === "user" ? "#ffffff" : "#16233b", lineHeight: 1.5,
+=======
+                  borderRadius: msg.role === "user" ? "8px 8px 2px 8px" : "8px 8px 8px 2px",
+                  background: msg.role === "user" ? "#e2a53a" : "rgba(255,255,255,0.07)",
+                  border: msg.role === "user" ? "none" : "1px solid rgba(255,255,255,0.10)",
+                  fontSize: 13, color: msg.role === "user" ? "#1a1408" : "#fff", lineHeight: 1.5,
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
                 }}>
                   {msg.role === "model" ? <ChatMessage content={msg.content} /> : msg.content}
                 </div>
@@ -201,10 +241,17 @@ export default function AiChat() {
                     onClick={() => sendMessage(prompt)}
                     style={{
                       padding: "6px 10px",
+<<<<<<< HEAD
                       borderRadius: 8,
                       border: "1px solid rgba(21, 101, 192, 0.20)",
                       background: "#f5f9fd",
                       color: "#1976d2",
+=======
+                      borderRadius: 4,
+                      border: "1px solid rgba(226,165,58,0.35)",
+                      background: "rgba(226,165,58,0.08)",
+                      color: "#e2a53a",
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
                       fontSize: 12,
                       textAlign: "left",
                     }}
@@ -221,7 +268,11 @@ export default function AiChat() {
                 {[0, 1, 2].map((i) => (
                   <div key={i} style={{
                     width: 6, height: 6, borderRadius: "50%",
+<<<<<<< HEAD
                     background: "#1976d2",
+=======
+                    background: "#e2a53a",
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
                     animation: `pulse 1s ${i * 0.2}s infinite`,
                   }} />
                 ))}
@@ -231,7 +282,11 @@ export default function AiChat() {
           </div>
 
           {/* Input */}
+<<<<<<< HEAD
           <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(21, 101, 192, 0.10)", display: "flex", gap: 8 }}>
+=======
+          <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 8 }}>
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -239,22 +294,38 @@ export default function AiChat() {
               placeholder="Ask about routes..."
               style={{
                 flex: 1,
+<<<<<<< HEAD
                 background: "#f5f9fd",
                 border: "1px solid rgba(21, 101, 192, 0.14)",
                 borderRadius: 8, padding: "8px 12px",
                 fontSize: 16, color: "#16233b",
+=======
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                borderRadius: 6, padding: "8px 12px",
+                fontSize: 13, color: "#fff",
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
               }}
             />
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || loading}
               style={{
+<<<<<<< HEAD
                 width: 34, height: 34, borderRadius: 8, flexShrink: 0,
                 background: input.trim() ? "#1976d2" : "#eef4fb",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
               <i className="ti ti-send" style={{ fontSize: 15, color: input.trim() ? "#ffffff" : "#93a2b8" }} />
+=======
+                width: 34, height: 34, borderRadius: 6, flexShrink: 0,
+                background: input.trim() ? "#e2a53a" : "rgba(255,255,255,0.08)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <i className="ti ti-send" style={{ fontSize: 15, color: input.trim() ? "#1a1408" : "#fff" }} />
+>>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
             </button>
           </div>
         </div>
