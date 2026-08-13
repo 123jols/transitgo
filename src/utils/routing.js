@@ -1,0 +1,172 @@
+import { stops, jeepneyRoutes, walkLinks } from "../data/db";
+import { haversineDistanceKm } from "./geo";
+
+const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
+
+// Standard Philippine LTFRB jeepney minimum-fare matrix: flat minimum fare
+// for the first few km, then a per-km increment beyond that. Not a
+// route-specific number — a public, well-known fare formula applied to the
+// real distance between the actual boarding/alighting stops.
+const JEEPNEY_SPEED_KMH = 12; // conservative stop-and-go urban average
+const MIN_FARE = 13;
+const MIN_FARE_KM = 4;
+const PER_KM_RATE = 1.8;
+
+function fareForDistance(km) {
+  if (km <= MIN_FARE_KM) return MIN_FARE;
+  return Math.round(MIN_FARE + (km - MIN_FARE_KM) * PER_KM_RATE);
+}
+
+function durationForDistance(km) {
+  return Math.max(3, Math.round((km / JEEPNEY_SPEED_KMH) * 60));
+}
+
+function segmentDistanceKm(stopIds) {
+  let total = 0;
+  for (let i = 0; i < stopIds.length - 1; i++) {
+    total += haversineDistanceKm(stopById[stopIds[i]], stopById[stopIds[i + 1]]);
+  }
+  return total;
+}
+
+// Every boarding→alighting pair (in sequence order) along a route is a valid
+// single-ride edge — a rider does not transfer just because the jeepney
+// passes an intermediate stop on its way.
+function buildRideEdges() {
+  const edges = [];
+  jeepneyRoutes.forEach((route) => {
+    const { stopIds } = route;
+    for (let i = 0; i < stopIds.length - 1; i++) {
+      for (let j = i + 1; j < stopIds.length; j++) {
+        const segment = stopIds.slice(i, j + 1);
+        const distanceKm = segmentDistanceKm(segment);
+        edges.push({
+          fromId: stopIds[i],
+          toId: stopIds[j],
+          route,
+          distanceKm,
+          fare: fareForDistance(distanceKm),
+          duration: durationForDistance(distanceKm),
+        });
+      }
+    }
+  });
+  return edges;
+}
+
+function buildWalkEdges() {
+  const edges = [];
+  walkLinks.forEach(({ stopIds: [a, b], minutes }) => {
+    edges.push({ fromId: a, toId: b, minutes });
+    edges.push({ fromId: b, toId: a, minutes });
+  });
+  return edges;
+}
+
+const rideEdges = buildRideEdges();
+const walkEdges = buildWalkEdges();
+
+const MAX_RIDES = 3;
+const MAX_WALK_LEGS = 2;
+const MAX_TOTAL_LEGS = 6;
+const MAX_RESULTS = 6;
+
+function findPaths(fromId, toId) {
+  const results = [];
+
+  function dfs(currentId, visited, legs, rideCount, walkCount) {
+    if (legs.length >= MAX_TOTAL_LEGS) return;
+
+    if (currentId === toId && legs.length > 0) {
+      results.push([...legs]);
+      return;
+    }
+    if (rideCount >= MAX_RIDES) return;
+
+    rideEdges
+      .filter((e) => e.fromId === currentId && !visited.has(e.toId))
+      .forEach((e) => {
+        visited.add(e.toId);
+        legs.push({ kind: "ride", edge: e });
+        dfs(e.toId, visited, legs, rideCount + 1, walkCount);
+        legs.pop();
+        visited.delete(e.toId);
+      });
+
+    if (walkCount < MAX_WALK_LEGS) {
+      walkEdges
+        .filter((e) => e.fromId === currentId && !visited.has(e.toId))
+        .forEach((e) => {
+          visited.add(e.toId);
+          legs.push({ kind: "walk", edge: e });
+          dfs(e.toId, visited, legs, rideCount, walkCount + 1);
+          legs.pop();
+          visited.delete(e.toId);
+        });
+    }
+  }
+
+  dfs(fromId, new Set([fromId]), [], 0, 0);
+  return results;
+}
+
+function legsToRouteObject(legs) {
+  const rideLegs = legs.filter((l) => l.kind === "ride");
+  const fare = rideLegs.reduce((sum, l) => sum + l.edge.fare, 0);
+  const duration = legs.reduce((sum, l) => sum + (l.kind === "ride" ? l.edge.duration : l.edge.minutes), 0);
+  const transfers = Math.max(0, rideLegs.length - 1);
+  const type = rideLegs.length ? rideLegs[0].edge.route.type : "walk";
+  const label = rideLegs.length
+    ? rideLegs.map((l) => l.edge.route.code).join(" → ")
+    : "Walking route";
+
+  const stopNames = [];
+  legs.forEach((l, i) => {
+    if (i === 0) stopNames.push(stopById[l.edge.fromId].name);
+    stopNames.push(stopById[l.edge.toId].name);
+  });
+
+  return {
+    id: `trip-${legs.map((l) => `${l.edge.fromId}-${l.edge.toId}`).join("_")}`,
+    type,
+    label,
+    fare,
+    duration,
+    transfers,
+    stops: stopNames,
+    legs: legs.map((l) => ({
+      kind: l.kind,
+      code: l.kind === "ride" ? l.edge.route.code : null,
+      direction: l.kind === "ride" ? l.edge.route.direction : null,
+      fromName: stopById[l.edge.fromId].name,
+      toName: stopById[l.edge.toId].name,
+      fare: l.kind === "ride" ? l.edge.fare : 0,
+      duration: l.kind === "ride" ? l.edge.duration : l.edge.minutes,
+    })),
+  };
+}
+
+// Finds real, direction-aware commuter itineraries between two stop IDs.
+// Searches direct routes first, then 1, 2, and up to 3 rides with transfers,
+// ranked by fewest rides, then duration, then fare.
+export function findRoutesBetween(fromId, toId) {
+  if (!fromId || !toId || fromId === toId) return [];
+
+  const routeObjects = findPaths(fromId, toId).map(legsToRouteObject);
+
+  const seen = new Set();
+  const deduped = routeObjects.filter((r) => {
+    const key = r.stops.join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  deduped.sort((a, b) => {
+    if (a.transfers !== b.transfers) return a.transfers - b.transfers;
+    if (a.duration !== b.duration) return a.duration - b.duration;
+    return a.fare - b.fare;
+  });
+
+  return deduped.slice(0, MAX_RESULTS);
+}

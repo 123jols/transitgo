@@ -4,19 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-<<<<<<< HEAD
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0"
-=======
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
   },
   "dependencies": {
+    "leaflet": "^1.9.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
@@ -29,11 +23,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
-<<<<<<< HEAD
     "vite": "^8.0.12",
     "vite-plugin-pwa": "^1.3.0"
-=======
-    "vite": "^8.0.12"
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
   }
 }

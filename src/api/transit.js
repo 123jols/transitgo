@@ -1,8 +1,14 @@
-<<<<<<< HEAD
-﻿import { stops, routes } from "../data/db";
-=======
-import { stops, routes } from "../data/db";
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+import { stops } from "../data/db";
+import { findRoutesBetween } from "../utils/routing";
+
+// Curated pairs shown as "Popular routes" chips. Kept small and using stop
+// IDs that actually exist in the verified network.
+const POPULAR_PAIRS = [
+  ["it-park", "sm-city"],
+  ["sm-city", "it-park"],
+  ["it-park", "ayala"],
+  ["ayala", "colon"],
+];
 
 export function searchStops(query) {
   return stops.filter((s) =>
@@ -11,45 +17,29 @@ export function searchStops(query) {
 }
 
 export function findRoutes(fromId, toId) {
-  return routes[`${fromId}:${toId}`] || [];
+  return findRoutesBetween(fromId, toId);
 }
 
 export function getStops() {
   return stops;
 }
 
+// Kept for backward compatibility with the (currently unused) "add a route"
+// form in HomePage.jsx. Not wired into the verified route graph — this app's
+// routing now only searches the sourced, verified network in data/db.js.
+export function addRoute() {}
+
 export function getPopularRoutes() {
-  return Object.entries(routes).map(([key, routeList]) => {
-    const [fromId, toId] = key.split(":");
-<<<<<<< HEAD
+  return POPULAR_PAIRS.map(([fromId, toId]) => {
     const from = stops.find((stop) => stop.id === fromId);
     const to = stops.find((stop) => stop.id === toId);
+    const [route] = findRoutesBetween(fromId, toId);
 
-=======
-    const from = stops.find((s) => s.id === fromId);
-    const to = stops.find((s) => s.id === toId);
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
     return {
       from,
       to,
       label: `${from?.name || fromId} → ${to?.name || toId}`,
-      route: routeList[0],
+      route,
     };
-  });
+  }).filter((entry) => entry.route);
 }
-
-export function addRoute(route) {
-  const key = `${route.fromId}:${route.toId}`;
-<<<<<<< HEAD
-  if (!routes[key]) {
-    routes[key] = [];
-  }
-  routes[key].push(route);
-}
-=======
-  if (!routes[key]) routes[key] = [];
-  routes[key].push(route);
-  localStorage.setItem("transitgo-routes", JSON.stringify(routes));
-}
-
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05

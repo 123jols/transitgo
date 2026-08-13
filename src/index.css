@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 :root {
   color-scheme: light;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -44,10 +43,3 @@ select option {
   background: #ffffff;
   color: #16233b;
 }
-=======
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; }
-::-webkit-scrollbar { display: none; }
-input { font-family: inherit; }
-button { cursor: pointer; font-family: inherit; border: none; background: transparent; }
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05

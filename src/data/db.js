@@ -1,366 +1,113 @@
-<<<<<<< HEAD
-﻿export const stops = [
-=======
+// Metro Cebu stop/landmark registry.
+// Coordinates are approximate landmark locations, not surveyed jeepney stop poles.
 export const stops = [
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
-  { id: "it-park", name: "IT Park Cebu", type: "business" },
-  { id: "sm-city", name: "SM City Cebu", type: "mall" },
-  { id: "colon", name: "Colon Street", type: "landmark" },
-  { id: "ayala", name: "Ayala Center Cebu", type: "mall" },
-  { id: "basilica", name: "Basilica del Santo Niño", type: "landmark" },
-<<<<<<< HEAD
-=======
-  { id: "airport", name: "Mactan-Cebu Airport", type: "airport" },
-  { id: "chonghua", name: "Chong Hua Hospital", type: "hospital" },
-  { id: "fuente", name: "Fuente Osmena Circle", type: "landmark" },
-  { id: "sm-seaside", name: "SM Seaside City", type: "mall" },
-  { id: "usc", name: "University of San Carlos", type: "school" },
-  { id: "capitol", name: "Cebu Provincial Capitol", type: "landmark" },
-  { id: "carbon", name: "Carbon Market", type: "landmark" },
-  { id: "lahug", name: "Gaisano Country Mall", type: "mall" },
-  { id: "banilad", name: "Banilad Town Center", type: "mall" },
-  { id: "guadalupe", name: "Guadalupe", type: "landmark" },
-  { id: "usjr", name: "USJ-R Basak Campus", type: "school" },
-  { id: "mandaue", name: "Parkmall Mandaue", type: "mall" },
-  { id: "talisay", name: "Talisay City Plaza", type: "landmark" },
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+  { id: "it-park", name: "IT Park Cebu", type: "business", lat: 10.3298, lon: 123.9057 },
+  { id: "sm-city", name: "SM City Cebu", type: "mall", lat: 10.3111, lon: 123.9186 },
+  { id: "ayala", name: "Ayala Center Cebu", type: "mall", lat: 10.3181, lon: 123.9056 },
+  { id: "colon", name: "Colon Street", type: "landmark", lat: 10.2938, lon: 123.9016 },
+  { id: "basilica", name: "Basilica del Santo Niño", type: "landmark", lat: 10.2938, lon: 123.9022 },
+  { id: "fuente", name: "Fuente Osmeña Circle", type: "landmark", lat: 10.3103, lon: 123.8925 },
+  { id: "carbon", name: "Carbon Market", type: "landmark", lat: 10.2939, lon: 123.8998 },
+  { id: "talamban", name: "Talamban", type: "district", lat: 10.3654, lon: 123.8917 },
 ];
 
-export const routes = {
-  "it-park:sm-city": [
-<<<<<<< HEAD
-    {
-      id: "r1",
-      type: "jeepney",
-      label: "Jeepney 13C",
-      fare: 15,
-      duration: 25,
-      transfers: 0,
-      stops: ["IT Park Cebu", "SM City Cebu"],
-    },
-  ],
-  "sm-city:it-park": [
-    {
-      id: "r2",
-      type: "jeepney",
-      label: "Jeepney 13C",
-      fare: 16,
-      duration: 27,
-      transfers: 0,
-      stops: ["SM City Cebu", "IT Park Cebu"],
-    },
-  ],
-  "it-park:ayala": [
-    {
-      id: "r3",
-      type: "bus",
-      label: "BRT Route 1",
-      fare: 18,
-      duration: 22,
-      transfers: 0,
-      stops: ["IT Park Cebu", "Ayala Center Cebu"],
-    },
-  ],
-  "ayala:colon": [
-    {
-      id: "r4",
-      type: "jeepney",
-      label: "Jeepney 04A",
-      fare: 12,
-      duration: 18,
-      transfers: 1,
-      stops: ["Ayala Center Cebu", "Colon Street"],
-    },
-  ],
-  "colon:basilica": [
-    {
-      id: "r5",
-      type: "walk",
-      label: "Walking route",
-      fare: 0,
-      duration: 12,
-      transfers: 0,
-      stops: ["Colon Street", "Basilica del Santo Niño"],
-    },
-  ],
-  "sm-city:basilica": [
-    {
-      id: "r6",
-      type: "bus",
-      label: "Bus 02B",
-      fare: 25,
-      duration: 30,
-      transfers: 0,
-      stops: ["SM City Cebu", "Basilica del Santo Niño"],
-    },
-=======
-    { id:"r1", type:"jeepney", label:"Jeepney 13C", fare:15, duration:25, transfers:0, stops:["IT Park Cebu","SM City Cebu"] },
-  ],
-  "sm-city:it-park": [
-    { id:"r2", type:"jeepney", label:"Jeepney 13C", fare:16, duration:27, transfers:0, stops:["SM City Cebu","IT Park Cebu"] },
-  ],
-  "it-park:ayala": [
-    { id:"r3", type:"bus", label:"BRT Route 1", fare:18, duration:22, transfers:0, stops:["IT Park Cebu","Ayala Center Cebu"] },
-  ],
-  "ayala:colon": [
-    { id:"r4", type:"jeepney", label:"Jeepney 04A", fare:12, duration:18, transfers:1, stops:["Ayala Center Cebu","Colon Street"] },
-  ],
-  "colon:basilica": [
-    { id:"r5", type:"walk", label:"Walking route", fare:0, duration:12, transfers:0, stops:["Colon Street","Basilica del Santo Niño"] },
-  ],
-  "sm-city:basilica": [
-    { id:"r6", type:"bus", label:"Bus 02B", fare:25, duration:30, transfers:0, stops:["SM City Cebu","Basilica del Santo Niño"] },
-  ],
-  "sm-city:ayala": [
-    { id:"r7", type:"jeepney", label:"Jeepney 03Q", fare:13, duration:25, transfers:0, stops:["SM City Cebu","Ayala Center Cebu"] },
-  ],
-  "ayala:sm-city": [
-    { id:"r8", type:"jeepney", label:"Jeepney 03Q", fare:13, duration:25, transfers:0, stops:["Ayala Center Cebu","SM City Cebu"] },
-  ],
-  "sm-city:airport": [
-    { id:"r9", type:"bus", label:"MyBus MCIA", fare:50, duration:50, transfers:0, stops:["SM City Cebu","Mactan-Cebu Airport"] },
-  ],
+// Verified traditional Cebu jeepney routes. Each entry is ONE physical route
+// (a jeepney travels its full stopIds sequence); a rider can board/alight at
+// any two stops on the same route without transferring. Both travel
+// directions of a code are listed as separate entries since Cebu jeepney
+// letter-suffixes are route *variants*, not reliable direction markers
+// (see source notes) — we only encode the two directions we could verify.
+//
+// Fare/duration are NOT sourced from research (no public source publishes
+// per-route minute/peso figures) — they are computed elsewhere from real
+// stop coordinates using the standard LTFRB minimum-fare formula and a
+// conservative urban jeepney speed, not invented per-route numbers.
+export const jeepneyRoutes = [
+  {
+    id: "04l-itpark-sm",
+    code: "04L",
+    type: "jeepney",
+    direction: "IT Park Cebu → Ayala Center Cebu → SM City Cebu",
+    stopIds: ["it-park", "ayala", "sm-city"],
+    verified: true,
+    source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://ph.commutetour.com/ph/routes/cebu-routes/cebu-jeep/04l/",
+    lastUpdated: "2026",
+  },
+  {
+    id: "04l-sm-itpark",
+    code: "04L",
+    type: "jeepney",
+    direction: "SM City Cebu → Ayala Center Cebu → IT Park Cebu",
+    stopIds: ["sm-city", "ayala", "it-park"],
+    verified: true,
+    source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://ph.commutetour.com/ph/routes/cebu-routes/cebu-jeep/04l/",
+    lastUpdated: "2026",
+  },
+  {
+    id: "17b-itpark-carbon",
+    code: "17B",
+    type: "jeepney",
+    direction: "IT Park Cebu (Apas) → Fuente Osmeña Circle → Carbon Market",
+    stopIds: ["it-park", "fuente", "carbon"],
+    verified: true,
+    source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://travelsetu.com/guide/basilica-minore-del-santo-nino-tourism/how-to-reach-basilica-minore-del-santo-nino",
+    lastUpdated: "2026",
+  },
+  {
+    id: "17b-carbon-itpark",
+    code: "17B",
+    type: "jeepney",
+    direction: "Carbon Market → Fuente Osmeña Circle → IT Park Cebu (Apas)",
+    stopIds: ["carbon", "fuente", "it-park"],
+    verified: true,
+    source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://travelsetu.com/guide/basilica-minore-del-santo-nino-tourism/how-to-reach-basilica-minore-del-santo-nino",
+    lastUpdated: "2026",
+  },
+  {
+    id: "14d-ayala-colon",
+    code: "14D",
+    type: "jeepney",
+    direction: "Ayala Center Cebu / Capitol → Colon Street",
+    stopIds: ["ayala", "colon"],
+    verified: true,
+    source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://ph.commutetour.com/ph/terminal/ayala-center-cebu/",
+    lastUpdated: "2026",
+  },
+  {
+    id: "14d-colon-ayala",
+    code: "14D",
+    type: "jeepney",
+    direction: "Colon Street → Ayala Center Cebu / Capitol",
+    stopIds: ["colon", "ayala"],
+    verified: true,
+    source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://ph.commutetour.com/ph/terminal/ayala-center-cebu/",
+    lastUpdated: "2026",
+  },
+  {
+    id: "13c-talamban-colon",
+    code: "13C",
+    type: "jeepney",
+    direction: "Talamban → Ayala Center Cebu → Colon Street",
+    stopIds: ["talamban", "ayala", "colon"],
+    verified: true,
+    source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://ph.commutetour.com/ph/terminal/ayala-center-cebu/",
+    lastUpdated: "2026",
+  },
+  {
+    id: "13c-colon-talamban",
+    code: "13C",
+    type: "jeepney",
+    direction: "Colon Street → Ayala Center Cebu → Talamban",
+    stopIds: ["colon", "ayala", "talamban"],
+    verified: true,
+    source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://ph.commutetour.com/ph/terminal/ayala-center-cebu/",
+    lastUpdated: "2026",
+  },
+];
 
-  "fuente:sm-city": [
-    { id:"r10", type:"jeepney", label:"Jeepney 17C", fare:13, duration:20, transfers:0, stops:["Fuente Osmena Circle","SM City Cebu"] },
-  ],
-  "sm-city:fuente": [
-    { id:"r11", type:"jeepney", label:"Jeepney 17C", fare:13, duration:20, transfers:0, stops:["SM City Cebu","Fuente Osmena Circle"] },
-  ],
-  "fuente:ayala": [
-    { id:"r12", type:"jeepney", label:"Jeepney 12D", fare:11, duration:12, transfers:0, stops:["Fuente Osmena Circle","Ayala Center Cebu"] },
-  ],
-  "ayala:fuente": [
-    { id:"r13", type:"jeepney", label:"Jeepney 12D", fare:11, duration:12, transfers:0, stops:["Ayala Center Cebu","Fuente Osmena Circle"] },
-  ],
-  "fuente:it-park": [
-    { id:"r14", type:"jeepney", label:"Jeepney 17C", fare:13, duration:18, transfers:0, stops:["Fuente Osmena Circle","IT Park Cebu"] },
-  ],
-  "it-park:fuente": [
-    { id:"r15", type:"jeepney", label:"Jeepney 17C", fare:13, duration:18, transfers:0, stops:["IT Park Cebu","Fuente Osmena Circle"] },
-  ],
-  "fuente:colon": [
-    { id:"r16", type:"jeepney", label:"Jeepney 01L", fare:10, duration:10, transfers:0, stops:["Fuente Osmena Circle","Colon Street"] },
-  ],
-  "colon:fuente": [
-    { id:"r17", type:"jeepney", label:"Jeepney 01L", fare:10, duration:10, transfers:0, stops:["Colon Street","Fuente Osmena Circle"] },
-  ],
-
-  "basilica:carbon": [
-    { id:"r18", type:"walk", label:"Walking route", fare:0, duration:8, transfers:0, stops:["Basilica del Santo Niño","Carbon Market"] },
-  ],
-  "carbon:basilica": [
-    { id:"r19", type:"walk", label:"Walking route", fare:0, duration:8, transfers:0, stops:["Carbon Market","Basilica del Santo Niño"] },
-  ],
-  "basilica:fuente": [
-    { id:"r20", type:"jeepney", label:"Jeepney 04H", fare:12, duration:15, transfers:0, stops:["Basilica del Santo Niño","Fuente Osmena Circle"] },
-  ],
-  "fuente:basilica": [
-    { id:"r21", type:"jeepney", label:"Jeepney 04H", fare:12, duration:15, transfers:0, stops:["Fuente Osmena Circle","Basilica del Santo Niño"] },
-  ],
-
-  "carbon:colon": [
-    { id:"r22", type:"walk", label:"Walking route", fare:0, duration:6, transfers:0, stops:["Carbon Market","Colon Street"] },
-  ],
-  "colon:carbon": [
-    { id:"r23", type:"walk", label:"Walking route", fare:0, duration:6, transfers:0, stops:["Colon Street","Carbon Market"] },
-  ],
-  "carbon:sm-city": [
-    { id:"r24", type:"jeepney", label:"Jeepney 06L", fare:13, duration:20, transfers:0, stops:["Carbon Market","SM City Cebu"] },
-  ],
-  "sm-city:carbon": [
-    { id:"r25", type:"jeepney", label:"Jeepney 06L", fare:13, duration:20, transfers:0, stops:["SM City Cebu","Carbon Market"] },
-  ],
-
-  "airport:ayala": [
-    { id:"r26", type:"bus", label:"MyBus MCIA", fare:50, duration:55, transfers:0, stops:["Mactan-Cebu Airport","Ayala Center Cebu"] },
-  ],
-  "ayala:airport": [
-    { id:"r27", type:"bus", label:"MyBus MCIA", fare:50, duration:55, transfers:0, stops:["Ayala Center Cebu","Mactan-Cebu Airport"] },
-  ],
-  "airport:it-park": [
-    { id:"r28", type:"bus", label:"MyBus MCIA", fare:45, duration:40, transfers:0, stops:["Mactan-Cebu Airport","IT Park Cebu"] },
-  ],
-  "it-park:airport": [
-    { id:"r29", type:"bus", label:"MyBus MCIA", fare:45, duration:40, transfers:0, stops:["IT Park Cebu","Mactan-Cebu Airport"] },
-  ],
-
-  "chonghua:fuente": [
-    { id:"r30", type:"jeepney", label:"Jeepney 62B", fare:11, duration:10, transfers:0, stops:["Chong Hua Hospital","Fuente Osmena Circle"] },
-  ],
-  "fuente:chonghua": [
-    { id:"r31", type:"jeepney", label:"Jeepney 62B", fare:11, duration:10, transfers:0, stops:["Fuente Osmena Circle","Chong Hua Hospital"] },
-  ],
-  "chonghua:sm-city": [
-    { id:"r32", type:"jeepney", label:"Jeepney 62B", fare:14, duration:22, transfers:0, stops:["Chong Hua Hospital","SM City Cebu"] },
-  ],
-  "sm-city:chonghua": [
-    { id:"r33", type:"jeepney", label:"Jeepney 62B", fare:14, duration:22, transfers:0, stops:["SM City Cebu","Chong Hua Hospital"] },
-  ],
-  "chonghua:ayala": [
-    { id:"r34", type:"jeepney", label:"Jeepney 62C", fare:13, duration:18, transfers:0, stops:["Chong Hua Hospital","Ayala Center Cebu"] },
-  ],
-  "ayala:chonghua": [
-    { id:"r35", type:"jeepney", label:"Jeepney 62C", fare:13, duration:18, transfers:0, stops:["Ayala Center Cebu","Chong Hua Hospital"] },
-  ],
-
-  "usc:colon": [
-    { id:"r36", type:"walk", label:"Walking route", fare:0, duration:10, transfers:0, stops:["University of San Carlos","Colon Street"] },
-  ],
-  "colon:usc": [
-    { id:"r37", type:"walk", label:"Walking route", fare:0, duration:10, transfers:0, stops:["Colon Street","University of San Carlos"] },
-  ],
-  "usc:sm-city": [
-    { id:"r38", type:"jeepney", label:"Jeepney 13B", fare:13, duration:22, transfers:0, stops:["University of San Carlos","SM City Cebu"] },
-  ],
-  "sm-city:usc": [
-    { id:"r39", type:"jeepney", label:"Jeepney 13B", fare:13, duration:22, transfers:0, stops:["SM City Cebu","University of San Carlos"] },
-  ],
-  "usc:fuente": [
-    { id:"r40", type:"jeepney", label:"Jeepney 04C", fare:11, duration:14, transfers:0, stops:["University of San Carlos","Fuente Osmena Circle"] },
-  ],
-  "fuente:usc": [
-    { id:"r41", type:"jeepney", label:"Jeepney 04C", fare:11, duration:14, transfers:0, stops:["Fuente Osmena Circle","University of San Carlos"] },
-  ],
-
-  "sm-seaside:sm-city": [
-    { id:"r42", type:"bus", label:"Bus 17A", fare:15, duration:35, transfers:0, stops:["SM Seaside City","SM City Cebu"] },
-  ],
-  "sm-city:sm-seaside": [
-    { id:"r43", type:"bus", label:"Bus 17A", fare:15, duration:35, transfers:0, stops:["SM City Cebu","SM Seaside City"] },
-  ],
-  "sm-seaside:ayala": [
-    { id:"r44", type:"bus", label:"Bus 17A", fare:17, duration:40, transfers:0, stops:["SM Seaside City","Ayala Center Cebu"] },
-  ],
-  "ayala:sm-seaside": [
-    { id:"r45", type:"bus", label:"Bus 17A", fare:17, duration:40, transfers:0, stops:["Ayala Center Cebu","SM Seaside City"] },
-  ],
-
-  "capitol:fuente": [
-    { id:"r46", type:"walk", label:"Walking route", fare:0, duration:10, transfers:0, stops:["Cebu Provincial Capitol","Fuente Osmena Circle"] },
-  ],
-  "fuente:capitol": [
-    { id:"r47", type:"walk", label:"Walking route", fare:0, duration:10, transfers:0, stops:["Fuente Osmena Circle","Cebu Provincial Capitol"] },
-  ],
-  "capitol:ayala": [
-    { id:"r48", type:"jeepney", label:"Jeepney 12D", fare:11, duration:15, transfers:0, stops:["Cebu Provincial Capitol","Ayala Center Cebu"] },
-  ],
-  "ayala:capitol": [
-    { id:"r49", type:"jeepney", label:"Jeepney 12D", fare:11, duration:15, transfers:0, stops:["Ayala Center Cebu","Cebu Provincial Capitol"] },
-  ],
-  "capitol:it-park": [
-    { id:"r50", type:"jeepney", label:"Jeepney 17B", fare:12, duration:18, transfers:0, stops:["Cebu Provincial Capitol","IT Park Cebu"] },
-  ],
-  "it-park:capitol": [
-    { id:"r51", type:"jeepney", label:"Jeepney 17B", fare:12, duration:18, transfers:0, stops:["IT Park Cebu","Cebu Provincial Capitol"] },
-  ],
-
-  "lahug:it-park": [
-    { id:"r52", type:"jeepney", label:"Jeepney 17B", fare:11, duration:10, transfers:0, stops:["Gaisano Country Mall","IT Park Cebu"] },
-  ],
-  "it-park:lahug": [
-    { id:"r53", type:"jeepney", label:"Jeepney 17B", fare:11, duration:10, transfers:0, stops:["IT Park Cebu","Gaisano Country Mall"] },
-  ],
-  "lahug:ayala": [
-    { id:"r54", type:"jeepney", label:"Jeepney 04L", fare:12, duration:15, transfers:0, stops:["Gaisano Country Mall","Ayala Center Cebu"] },
-  ],
-  "ayala:lahug": [
-    { id:"r55", type:"jeepney", label:"Jeepney 04L", fare:12, duration:15, transfers:0, stops:["Ayala Center Cebu","Gaisano Country Mall"] },
-  ],
-  "lahug:fuente": [
-    { id:"r56", type:"jeepney", label:"Jeepney 17B", fare:11, duration:12, transfers:0, stops:["Gaisano Country Mall","Fuente Osmena Circle"] },
-  ],
-  "fuente:lahug": [
-    { id:"r57", type:"jeepney", label:"Jeepney 17B", fare:11, duration:12, transfers:0, stops:["Fuente Osmena Circle","Gaisano Country Mall"] },
-  ],
-
-  "banilad:it-park": [
-    { id:"r58", type:"jeepney", label:"Jeepney 23C", fare:13, duration:15, transfers:0, stops:["Banilad Town Center","IT Park Cebu"] },
-  ],
-  "it-park:banilad": [
-    { id:"r59", type:"jeepney", label:"Jeepney 23C", fare:13, duration:15, transfers:0, stops:["IT Park Cebu","Banilad Town Center"] },
-  ],
-  "banilad:ayala": [
-    { id:"r60", type:"jeepney", label:"Jeepney 23C", fare:14, duration:20, transfers:0, stops:["Banilad Town Center","Ayala Center Cebu"] },
-  ],
-  "ayala:banilad": [
-    { id:"r61", type:"jeepney", label:"Jeepney 23C", fare:14, duration:20, transfers:0, stops:["Ayala Center Cebu","Banilad Town Center"] },
-  ],
-  "banilad:sm-city": [
-    { id:"r62", type:"jeepney", label:"Jeepney 23C", fare:16, duration:28, transfers:0, stops:["Banilad Town Center","SM City Cebu"] },
-  ],
-  "sm-city:banilad": [
-    { id:"r63", type:"jeepney", label:"Jeepney 23C", fare:16, duration:28, transfers:0, stops:["SM City Cebu","Banilad Town Center"] },
-  ],
-
-  "guadalupe:colon": [
-    { id:"r64", type:"jeepney", label:"Jeepney 06B", fare:12, duration:18, transfers:0, stops:["Guadalupe","Colon Street"] },
-  ],
-  "colon:guadalupe": [
-    { id:"r65", type:"jeepney", label:"Jeepney 06B", fare:12, duration:18, transfers:0, stops:["Colon Street","Guadalupe"] },
-  ],
-  "guadalupe:fuente": [
-    { id:"r66", type:"jeepney", label:"Jeepney 06B", fare:11, duration:14, transfers:0, stops:["Guadalupe","Fuente Osmena Circle"] },
-  ],
-  "fuente:guadalupe": [
-    { id:"r67", type:"jeepney", label:"Jeepney 06B", fare:11, duration:14, transfers:0, stops:["Fuente Osmena Circle","Guadalupe"] },
-  ],
-  "guadalupe:ayala": [
-    { id:"r68", type:"jeepney", label:"Jeepney 06C", fare:13, duration:20, transfers:0, stops:["Guadalupe","Ayala Center Cebu"] },
-  ],
-  "ayala:guadalupe": [
-    { id:"r69", type:"jeepney", label:"Jeepney 06C", fare:13, duration:20, transfers:0, stops:["Ayala Center Cebu","Guadalupe"] },
-  ],
-
-  "usjr:colon": [
-    { id:"r70", type:"walk", label:"Walking route", fare:0, duration:12, transfers:0, stops:["USJ-R Basak Campus","Colon Street"] },
-  ],
-  "colon:usjr": [
-    { id:"r71", type:"walk", label:"Walking route", fare:0, duration:12, transfers:0, stops:["Colon Street","USJ-R Basak Campus"] },
-  ],
-  "usjr:carbon": [
-    { id:"r72", type:"walk", label:"Walking route", fare:0, duration:8, transfers:0, stops:["USJ-R Basak Campus","Carbon Market"] },
-  ],
-  "carbon:usjr": [
-    { id:"r73", type:"walk", label:"Walking route", fare:0, duration:8, transfers:0, stops:["Carbon Market","USJ-R Basak Campus"] },
-  ],
-  "usjr:sm-city": [
-    { id:"r74", type:"jeepney", label:"Jeepney 13B", fare:13, duration:24, transfers:0, stops:["USJ-R Basak Campus","SM City Cebu"] },
-  ],
-  "sm-city:usjr": [
-    { id:"r75", type:"jeepney", label:"Jeepney 13B", fare:13, duration:24, transfers:0, stops:["SM City Cebu","USJ-R Basak Campus"] },
-  ],
-
-  "mandaue:sm-city": [
-    { id:"r76", type:"bus", label:"Bus 01B", fare:15, duration:30, transfers:0, stops:["Parkmall Mandaue","SM City Cebu"] },
-  ],
-  "sm-city:mandaue": [
-    { id:"r77", type:"bus", label:"Bus 01B", fare:15, duration:30, transfers:0, stops:["SM City Cebu","Parkmall Mandaue"] },
-  ],
-  "mandaue:it-park": [
-    { id:"r78", type:"bus", label:"Bus 01B", fare:14, duration:25, transfers:0, stops:["Parkmall Mandaue","IT Park Cebu"] },
-  ],
-  "it-park:mandaue": [
-    { id:"r79", type:"bus", label:"Bus 01B", fare:14, duration:25, transfers:0, stops:["IT Park Cebu","Parkmall Mandaue"] },
-  ],
-  "mandaue:ayala": [
-    { id:"r80", type:"bus", label:"Bus 01B", fare:16, duration:32, transfers:0, stops:["Parkmall Mandaue","Ayala Center Cebu"] },
-  ],
-  "ayala:mandaue": [
-    { id:"r81", type:"bus", label:"Bus 01B", fare:16, duration:32, transfers:0, stops:["Ayala Center Cebu","Parkmall Mandaue"] },
-  ],
-
-  "talisay:sm-city": [
-    { id:"r82", type:"bus", label:"Bus 62B", fare:18, duration:40, transfers:0, stops:["Talisay City Plaza","SM City Cebu"] },
-  ],
-  "sm-city:talisay": [
-    { id:"r83", type:"bus", label:"Bus 62B", fare:18, duration:40, transfers:0, stops:["SM City Cebu","Talisay City Plaza"] },
-  ],
-  "talisay:colon": [
-    { id:"r84", type:"bus", label:"Bus 62B", fare:17, duration:38, transfers:0, stops:["Talisay City Plaza","Colon Street"] },
-  ],
-  "colon:talisay": [
-    { id:"r85", type:"bus", label:"Bus 62B", fare:17, duration:38, transfers:0, stops:["Colon Street","Talisay City Plaza"] },
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
-  ],
-};
+// Short, unfarebox walking connections between adjacent downtown landmarks.
+// Not jeepney routes — used by the router as free, no-transfer-count legs.
+export const walkLinks = [
+  { stopIds: ["carbon", "colon"], minutes: 5 },
+  { stopIds: ["colon", "basilica"], minutes: 8 },
+];

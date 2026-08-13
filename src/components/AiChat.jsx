@@ -74,6 +74,7 @@ function ChatMessage({ content }) {
 
 export default function AiChat() {
   const [open, setOpen]       = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [messages, setMessages] = useState([
     { role: "model", content: "Hi, I'm the TransitGo assistant. Ask me about Cebu routes, fares, or travel tips." }
   ]);
@@ -137,78 +138,68 @@ export default function AiChat() {
       <button
         onClick={() => setOpen(!open)}
         style={{
-<<<<<<< HEAD
-          position: "fixed", bottom: "max(20px, env(safe-area-inset-bottom))", right: 16,
+          position: "fixed", bottom: "calc(var(--bottom-nav-height) + 16px)", right: 16,
           width: 48, height: 48, borderRadius: "50%",
-          background: "#1976d2",
+          background: "var(--accent-primary)",
           border: "none",
           cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 8px 20px rgba(21, 66, 130, 0.28)",
-=======
-          position: "fixed", bottom: 80, right: 20,
-          width: 48, height: 48, borderRadius: "50%",
-          background: "#131a24",
-          border: "1px solid rgba(226,165,58,0.4)",
-          cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+          boxShadow: "0 8px 20px rgba(var(--shadow-rgb), 0.28)",
           zIndex: 300,
         }}
       >
         <i className={`ti ${open ? "ti-x" : "ti-message-circle"}`}
-<<<<<<< HEAD
-           style={{ fontSize: 20, color: "#fff" }} />
-=======
-           style={{ fontSize: 20, color: "#e2a53a" }} />
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+           style={{ fontSize: 20, color: "#04170a" }} />
       </button>
 
       {/* Chat window */}
       {open && (
-        <div style={{
-<<<<<<< HEAD
+        <div className="ai-chat-window" style={{
           position: "fixed",
-          bottom: "max(78px, calc(env(safe-area-inset-bottom) + 78px))",
+          bottom: "calc(var(--bottom-nav-height) + 74px)",
           right: 16, left: 16, margin: "0 auto",
           width: "auto", maxWidth: 340,
           height: "min(70vh, 460px)",
-          background: "#ffffff",
-          border: "1px solid rgba(21, 101, 192, 0.14)",
+          background: "var(--bg-surface)",
+          border: "1px solid rgba(var(--border-rgb), 0.14)",
           borderRadius: 16,
           display: "flex", flexDirection: "column",
           overflow: "hidden", zIndex: 300,
-          boxShadow: "0 12px 32px rgba(21, 66, 130, 0.18)",
+          boxShadow: "0 12px 32px rgba(var(--shadow-rgb), 0.18)",
           fontFamily: "'Inter', system-ui, sans-serif",
+          transformOrigin: "bottom right",
         }}>
 
           {/* Header */}
-          <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(21, 101, 192, 0.10)", background: "#f2f7fd", display: "flex", alignItems: "center", gap: 9 }}>
-            <div style={{ width: 26, height: 20, border: "1.5px solid #1976d2", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontFamily: "'Fira Code', monospace", fontSize: 10, fontWeight: 600, color: "#1976d2" }}>TG</span>
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(var(--border-rgb), 0.10)", background: "var(--bg-surface-alt)", display: "flex", alignItems: "center", gap: 9 }}>
+            <div style={{ width: 26, height: 20, border: "1.5px solid var(--accent-primary)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontFamily: "'Fira Code', monospace", fontSize: 10, fontWeight: 600, color: "var(--accent-primary)" }}>TG</span>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#16233b" }}>TransitGo Assistant</div>
-=======
-          position: "fixed", bottom: 138, right: 20,
-          width: 300, maxHeight: 420,
-          background: "#0d1420",
-          border: "1px solid rgba(255,255,255,0.14)",
-          borderRadius: 8,
-          display: "flex", flexDirection: "column",
-          overflow: "hidden", zIndex: 300,
-          boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
-        }}>
-
-          {/* Header */}
-          <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 9 }}>
-            <div style={{ width: 26, height: 20, border: "1.5px solid #e2a53a", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontFamily: "'Fira Code', monospace", fontSize: 10, fontWeight: 600, color: "#e2a53a" }}>TG</span>
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>TransitGo Assistant</div>
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flex: 1 }}>TransitGo Assistant</div>
+            <button
+              onClick={() => setShowMap((v) => !v)}
+              title={showMap ? "Back to chat" : "Show map"}
+              style={{
+                width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+                background: showMap ? "var(--accent-primary)" : "rgba(var(--accent-primary-rgb), 0.08)",
+                border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <i className={`ti ${showMap ? "ti-message-circle" : "ti-map-2"}`}
+                 style={{ fontSize: 15, color: showMap ? "#04170a" : "var(--accent-primary)" }} />
+            </button>
           </div>
 
+          {showMap ? (
+            <iframe
+              title="Cebu transit map"
+              src="https://www.google.com/maps?q=Cebu+City,+Philippines&output=embed"
+              style={{ flex: 1, border: "none" }}
+              loading="lazy"
+            />
+          ) : (
+            <>
           {/* Messages */}
           <div style={{ flex: 1, overflowY: "auto", padding: "12px", display: "flex", flexDirection: "column", gap: 8 }}>
             {messages.map((msg, i) => (
@@ -216,17 +207,10 @@ export default function AiChat() {
                 <div style={{
                   maxWidth: "80%",
                   padding: "8px 12px",
-<<<<<<< HEAD
                   borderRadius: msg.role === "user" ? "10px 10px 2px 10px" : "10px 10px 10px 2px",
-                  background: msg.role === "user" ? "#1976d2" : "#f5f9fd",
-                  border: msg.role === "user" ? "none" : "1px solid rgba(21, 101, 192, 0.10)",
-                  fontSize: 13, color: msg.role === "user" ? "#ffffff" : "#16233b", lineHeight: 1.5,
-=======
-                  borderRadius: msg.role === "user" ? "8px 8px 2px 8px" : "8px 8px 8px 2px",
-                  background: msg.role === "user" ? "#e2a53a" : "rgba(255,255,255,0.07)",
-                  border: msg.role === "user" ? "none" : "1px solid rgba(255,255,255,0.10)",
-                  fontSize: 13, color: msg.role === "user" ? "#1a1408" : "#fff", lineHeight: 1.5,
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+                  background: msg.role === "user" ? "var(--accent-primary)" : "var(--bg-surface-alt)",
+                  border: msg.role === "user" ? "none" : "1px solid rgba(var(--border-rgb), 0.10)",
+                  fontSize: 13, color: msg.role === "user" ? "#04170a" : "var(--text-primary)", lineHeight: 1.5,
                 }}>
                   {msg.role === "model" ? <ChatMessage content={msg.content} /> : msg.content}
                 </div>
@@ -241,17 +225,10 @@ export default function AiChat() {
                     onClick={() => sendMessage(prompt)}
                     style={{
                       padding: "6px 10px",
-<<<<<<< HEAD
                       borderRadius: 8,
-                      border: "1px solid rgba(21, 101, 192, 0.20)",
-                      background: "#f5f9fd",
-                      color: "#1976d2",
-=======
-                      borderRadius: 4,
-                      border: "1px solid rgba(226,165,58,0.35)",
-                      background: "rgba(226,165,58,0.08)",
-                      color: "#e2a53a",
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+                      border: "1px solid rgba(var(--accent-primary-rgb), 0.20)",
+                      background: "var(--bg-surface-alt)",
+                      color: "var(--accent-primary)",
                       fontSize: 12,
                       textAlign: "left",
                     }}
@@ -268,11 +245,7 @@ export default function AiChat() {
                 {[0, 1, 2].map((i) => (
                   <div key={i} style={{
                     width: 6, height: 6, borderRadius: "50%",
-<<<<<<< HEAD
-                    background: "#1976d2",
-=======
-                    background: "#e2a53a",
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+                    background: "var(--accent-primary)",
                     animation: `pulse 1s ${i * 0.2}s infinite`,
                   }} />
                 ))}
@@ -282,11 +255,7 @@ export default function AiChat() {
           </div>
 
           {/* Input */}
-<<<<<<< HEAD
-          <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(21, 101, 192, 0.10)", display: "flex", gap: 8 }}>
-=======
-          <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 8 }}>
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+          <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(var(--border-rgb), 0.10)", display: "flex", gap: 8 }}>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -294,40 +263,26 @@ export default function AiChat() {
               placeholder="Ask about routes..."
               style={{
                 flex: 1,
-<<<<<<< HEAD
-                background: "#f5f9fd",
-                border: "1px solid rgba(21, 101, 192, 0.14)",
+                background: "var(--bg-surface-alt)",
+                border: "1px solid rgba(var(--border-rgb), 0.14)",
                 borderRadius: 8, padding: "8px 12px",
-                fontSize: 16, color: "#16233b",
-=======
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 6, padding: "8px 12px",
-                fontSize: 13, color: "#fff",
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+                fontSize: 16, color: "var(--text-primary)",
               }}
             />
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || loading}
               style={{
-<<<<<<< HEAD
                 width: 34, height: 34, borderRadius: 8, flexShrink: 0,
-                background: input.trim() ? "#1976d2" : "#eef4fb",
+                background: input.trim() ? "var(--accent-primary)" : "var(--bg-disabled)",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              <i className="ti ti-send" style={{ fontSize: 15, color: input.trim() ? "#ffffff" : "#93a2b8" }} />
-=======
-                width: 34, height: 34, borderRadius: 6, flexShrink: 0,
-                background: input.trim() ? "#e2a53a" : "rgba(255,255,255,0.08)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <i className="ti ti-send" style={{ fontSize: 15, color: input.trim() ? "#1a1408" : "#fff" }} />
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05
+              <i className="ti ti-send" style={{ fontSize: 15, color: input.trim() ? "#04170a" : "var(--text-faint)" }} />
             </button>
           </div>
+            </>
+          )}
         </div>
       )}
     </>

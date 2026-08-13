@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-<<<<<<< HEAD
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
@@ -77,10 +76,3 @@ export default defineConfig({
     host: true,
   },
 })
-=======
-
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-})
->>>>>>> 40cfb5236f5a4bb25bc734eb83de7cfd23046d05

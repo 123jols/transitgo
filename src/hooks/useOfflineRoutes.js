@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { routes, stops } from "../data/db";
+import { jeepneyRoutes as routes, stops } from "../data/db";
 
 const CACHE_KEY = "transitgo-offline-routes";
 
