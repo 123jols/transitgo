@@ -5,10 +5,10 @@ import WeatherTip from "../components/WeatherTip";
 import ThemeToggle from "../components/ThemeToggle";
 import MapExplorer from "../components/MapExplorer";
 import TouristSpots from "../components/TouristSpots";
-import NearbyTerminals from "../components/NearbyTerminals";
 import BottomSheet from "../components/BottomSheet";
 import BottomNav from "../components/BottomNav";
 import TripsPage from "./TripsPage";
+import TerminalsPage from "./TerminalsPage";
 import ProfilePage from "./ProfilePage";
 
 // Glassmorphic dropdown component for stop suggestions
@@ -46,6 +46,7 @@ export default function HomePage() {
   const [routeFilter, setRouteFilter] = useState("all");
   const [sortBy, setSortBy] = useState("cheapest");
   const [recentSearches, setRecentSearches] = useState([]);
+  const [savedTrips, setSavedTrips] = useState([]);
   const [routeDetails, setRouteDetails] = useState(null);
   const [activeTab, setActiveTab] = useState("search");
   const [isSearching, setIsSearching] = useState(false);
@@ -93,6 +94,15 @@ export default function HomePage() {
         console.warn("Invalid recent search history stored", error);
       }
     }
+
+    const storedTrips = window.localStorage.getItem("transitgo-saved-trips");
+    if (storedTrips) {
+      try {
+        setSavedTrips(JSON.parse(storedTrips));
+      } catch (error) {
+        console.warn("Invalid saved trips stored", error);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -130,6 +140,30 @@ export default function HomePage() {
   };
 
   const getSearchLabel = (source, destination) => `${source.name} → ${destination.name}`;
+
+  const saveTripToTrips = (route, source, destination) => {
+    const id = `${route.id}-${source.id}-${destination.id}`;
+    setSavedTrips((prev) => {
+      if (prev.some((trip) => trip.id === id)) return prev;
+      const next = [{ id, route, from: source, to: destination, savedAt: new Date().toISOString() }, ...prev].slice(0, 20);
+      window.localStorage.setItem("transitgo-saved-trips", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const removeSavedTrip = (id) => {
+    setSavedTrips((prev) => {
+      const next = prev.filter((trip) => trip.id !== id);
+      window.localStorage.setItem("transitgo-saved-trips", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const openSavedTrip = (trip) => {
+    setFrom(trip.from);
+    setTo(trip.to);
+    setRouteDetails(trip.route);
+  };
 
   const getDiscountedFare = (fare) => {
     const discount = discounts[userType] || 0;
@@ -397,6 +431,9 @@ export default function HomePage() {
   const currentDiscountText = userType === "regular" ? "No discount" : getDiscountLabel();
 
   if (routeDetails) {
+    const isTripSaved = Boolean(
+      from && to && savedTrips.some((trip) => trip.id === `${routeDetails.id}-${from.id}-${to.id}`)
+    );
     return (
       <RouteDetailsPage
         route={routeDetails}
@@ -406,6 +443,8 @@ export default function HomePage() {
         discountRate={discounts[userType] || 0}
         userLabel={userLabels[userType]}
         onBack={backToResults}
+        isSaved={isTripSaved}
+        onSaveTrip={() => saveTripToTrips(routeDetails, from, to)}
       />
     );
   }
@@ -413,7 +452,20 @@ export default function HomePage() {
   if (navTab === "trips") {
     return (
       <>
-        <TripsPage stops={stops} onSelectTerminal={applyTerminalStop} />
+        <TripsPage
+          trips={savedTrips}
+          onOpenTrip={openSavedTrip}
+          onRemoveTrip={removeSavedTrip}
+        />
+        <BottomNav active={navTab} onChange={setNavTab} />
+      </>
+    );
+  }
+
+  if (navTab === "terminals") {
+    return (
+      <>
+        <TerminalsPage stops={stops} onViewRoutes={applyTerminalStop} />
         <BottomNav active={navTab} onChange={setNavTab} />
       </>
     );
@@ -422,7 +474,7 @@ export default function HomePage() {
   if (navTab === "profile") {
     return (
       <>
-        <ProfilePage stops={stops} onSelectTerminal={applyTerminalStop} />
+        <ProfilePage />
         <BottomNav active={navTab} onChange={setNavTab} />
       </>
     );
@@ -449,28 +501,6 @@ export default function HomePage() {
           <>
             <h2 className="hero-headline">Explore the map</h2>
             <p className="hero-subhead">Search anywhere · Drag pins to fine-tune</p>
-            <NearbyTerminals stops={stops} onSelect={applyTerminalStop} />
-            <div className="tips-section">
-              <p className="section-label">Tips</p>
-              <div className="tips-grid">
-                <div className="tip-card">
-                  <i className="ti ti-road"></i>
-                  <p>Directions follow roads — jeepneys and buses may take a slightly different path</p>
-                </div>
-                <div className="tip-card">
-                  <i className="ti ti-search"></i>
-                  <p>Search any mall, terminal, or barangay to get directions there</p>
-                </div>
-                <div className="tip-card">
-                  <i className="ti ti-arrows-sort"></i>
-                  <p>Use the swap button to flip your starting point and destination</p>
-                </div>
-                <div className="tip-card">
-                  <i className="ti ti-currency-peso"></i>
-                  <p>For fares and jeepney/bus codes, switch to the Home tab</p>
-                </div>
-              </div>
-            </div>
             <TouristSpots stops={stops} onSelect={applyAttractionStop} />
           </>
         )}
@@ -578,8 +608,6 @@ export default function HomePage() {
       {/* Main content tabs */}
       {activeTab === "search" && (
         <div className={`tab-content search-tab ${searchAnimated ? "animated" : ""}`}>
-          <NearbyTerminals stops={stops} onSelect={applyTerminalStop} />
-
           {/* Recent searches */}
           {recentSearches.length > 0 && (
             <div className="recent-section">

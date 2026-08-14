@@ -1,48 +1,47 @@
 import { attractions } from "../data/attractions";
+import useWikiThumbnail from "../hooks/useWikiThumbnail";
+
+function AttractionCard({ spot, stops, onViewRoute }) {
+  const photoUrl = useWikiThumbnail(spot.wikiTitle);
+  const stop = stops.find((s) => s.id === spot.nearestStopId);
+
+  return (
+    <div className="attraction-card">
+      <div className="attraction-photo">
+        {photoUrl ? (
+          <img src={photoUrl} alt={spot.name} loading="lazy" />
+        ) : (
+          <i className={`ti ${spot.icon}`}></i>
+        )}
+      </div>
+      <div className="attraction-body">
+        <p className="attraction-name">{spot.name}</p>
+        <p className="attraction-location">
+          <i className="ti ti-map-pin"></i> {spot.location}
+        </p>
+        <p className="attraction-description">{spot.description}</p>
+        <button
+          type="button"
+          className="attraction-route-button"
+          onClick={() => stop && onViewRoute(stop)}
+          disabled={!stop}
+        >
+          <i className="ti ti-route"></i>
+          View Route
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function TouristSpots({ stops, onSelect }) {
   return (
     <div className="attractions-section">
-      <p className="section-label">Famous spots in Cebu</p>
+      <p className="section-label">Famous Spots in Cebu</p>
       <div className="attractions-grid">
-        {attractions.map((spot) => {
-          const stop = stops.find((s) => s.id === spot.nearestStopId);
-          return (
-            <button
-              key={spot.id}
-              type="button"
-              className="attraction-card"
-              onClick={() => stop && onSelect(stop)}
-            >
-              <div className="attraction-header">
-                <div className="attraction-icon">
-                  <i className={`ti ${spot.icon}`}></i>
-                </div>
-                <div>
-                  <p className="attraction-name">{spot.name}</p>
-                  <p className="attraction-area">{spot.area}</p>
-                </div>
-              </div>
-              <p className="attraction-blurb">{spot.blurb}</p>
-              <div className="attraction-footer">
-                <div className="attraction-meta">
-                  <span className="attraction-meta-label">Ride</span>
-                  <span className="attraction-meta-value">{spot.ride}</span>
-                </div>
-                <div className="attraction-meta">
-                  <span className="attraction-meta-label">Fare</span>
-                  <span className="attraction-meta-value">{spot.fare}</span>
-                </div>
-              </div>
-              {stop && (
-                <div className="attraction-jumpoff">
-                  <i className="ti ti-map-pin-bolt"></i>
-                  <span>Tap to set <strong>{stop.name}</strong> as your destination</span>
-                </div>
-              )}
-            </button>
-          );
-        })}
+        {attractions.map((spot) => (
+          <AttractionCard key={spot.id} spot={spot} stops={stops} onViewRoute={onSelect} />
+        ))}
       </div>
     </div>
   );

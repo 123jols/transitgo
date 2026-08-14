@@ -2,6 +2,7 @@ const TABS = [
   { key: "home", label: "Home", icon: "ti-home" },
   { key: "explore", label: "Explore", icon: "ti-map-2" },
   { key: "trips", label: "Trips", icon: "ti-route" },
+  { key: "terminals", label: "Terminals", icon: "ti-bus-stop" },
   { key: "profile", label: "Profile", icon: "ti-user" },
 ];
 

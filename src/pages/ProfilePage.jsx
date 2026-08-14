@@ -1,6 +1,4 @@
-import NearbyTerminals from "../components/NearbyTerminals";
-
-export default function ProfilePage({ stops, onSelectTerminal }) {
+export default function ProfilePage() {
   return (
     <div className="static-page">
       <h2 className="route-label">Profile</h2>
@@ -9,7 +7,6 @@ export default function ProfilePage({ stops, onSelectTerminal }) {
         <p>No account yet</p>
         <span>Sign-in and saved preferences are coming soon.</span>
       </div>
-      <NearbyTerminals stops={stops} onSelect={onSelectTerminal} />
     </div>
   );
 }

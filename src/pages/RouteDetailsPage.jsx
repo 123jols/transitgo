@@ -16,6 +16,8 @@ export default function RouteDetailsPage({
   discountRate,
   userLabel,
   onBack,
+  isSaved,
+  onSaveTrip,
 }) {
   const discountedFare = Math.round(route.fare * (1 - discountRate));
   const savings = route.fare - discountedFare;
@@ -52,6 +54,17 @@ export default function RouteDetailsPage({
             </span>
           </div>
         </div>
+
+        {/* Save to Trips */}
+        <button
+          type="button"
+          className={`save-trip-button ${isSaved ? "saved" : ""}`}
+          onClick={onSaveTrip}
+          disabled={isSaved}
+        >
+          <i className={`ti ${isSaved ? "ti-bookmark" : "ti-bookmark-plus"}`}></i>
+          {isSaved ? "Saved to Trips" : "Add to Trips"}
+        </button>
 
         {/* Route map */}
         <RouteMap from={from} to={to} />
