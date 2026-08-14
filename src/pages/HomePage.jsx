@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { addRoute, findRoutes, getPopularRoutes, getStops, searchStops } from "../api/transit";
+import { haversineDistanceKm } from "../utils/geo";
 import RouteDetailsPage from "./RouteDetailsPage";
 import WeatherTip from "../components/WeatherTip";
 import ThemeToggle from "../components/ThemeToggle";
@@ -11,6 +12,11 @@ import BottomNav from "../components/BottomNav";
 import TripsPage from "./TripsPage";
 import TerminalsPage from "./TerminalsPage";
 import ProfilePage from "./ProfilePage";
+
+// Only auto-fill "From" with a detected stop if it's actually within Metro
+// Cebu — otherwise a GPS fix from way outside our coverage area (or a bad
+// fix) would silently pin the wrong origin.
+const MAX_AUTO_LOCATE_KM = 20;
 
 // Glassmorphic dropdown component for stop suggestions
 function StopDropdown({ suggestions, onSelect, open }) {
@@ -67,7 +73,9 @@ export default function HomePage() {
   const [routeSavedMessage, setRouteSavedMessage] = useState("");
   const [sheetSnap, setSheetSnap] = useState("half");
   const [navTab, setNavTab] = useState("home");
+  const [locStatus, setLocStatus] = useState("idle"); // idle | locating | ok | denied
   const searchTimeoutRef = useRef(null);
+  const fromRef = useRef(null);
 
   const popularRoutes = getPopularRoutes();
   const stops = getStops();
@@ -299,6 +307,40 @@ export default function HomePage() {
     setFromQuery(stop.name);
     setFromSuggestions([]);
   };
+
+  useEffect(() => {
+    fromRef.current = from;
+  }, [from]);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    setLocStatus("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // Don't clobber an origin the user already picked while we were
+        // waiting on the GPS fix.
+        if (fromRef.current) {
+          setLocStatus("idle");
+          return;
+        }
+        const userLoc = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        const nearest = stops
+          .map((stop) => ({ stop, distanceKm: haversineDistanceKm(userLoc, stop) }))
+          .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+
+        if (!nearest || nearest.distanceKm > MAX_AUTO_LOCATE_KM) {
+          setLocStatus("denied");
+          return;
+        }
+
+        selectFrom(nearest.stop);
+        setLocStatus("ok");
+      },
+      () => setLocStatus("denied"),
+      { timeout: 8000 }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectTo = (stop) => {
     setTo(stop);
@@ -590,6 +632,19 @@ export default function HomePage() {
             {isSearching ? "Searching…" : "Find Routes"}
           </button>
         </div>
+
+        {locStatus === "locating" && (
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "6px 2px 0" }}>
+            <i className="ti ti-locate" style={{ marginRight: 4 }}></i>
+            Finding your location…
+          </p>
+        )}
+        {locStatus === "ok" && from && (
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "6px 2px 0" }}>
+            <i className="ti ti-map-pin" style={{ marginRight: 4 }}></i>
+            Starting near {from.name} (your location)
+          </p>
+        )}
 
         {/* Quick destination chips */}
         {popularRoutes.length > 0 && (
