@@ -116,6 +116,10 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
     const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([CEBU_CENTER.lat, CEBU_CENTER.lon], 13);
     L.control.zoom({ position: "bottomleft" }).addTo(map);
     mapRef.current = map;
+    // The container's real size (100dvh layout) isn't always settled the
+    // instant L.map() runs, which can leave Leaflet's internal size cache
+    // stale; invalidateSize() on the next frame corrects it.
+    requestAnimationFrame(() => map.invalidateSize());
     return () => map.remove();
   }, []);
 
@@ -199,7 +203,15 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
     }
   }, [myLocation]);
 
+  // The continuous watchPosition() below already keeps `myLocation` fresh,
+  // so recentering is instant reuse of that fix. A fresh getCurrentPosition
+  // call is only needed when we don't have one yet (e.g. permission was
+  // previously denied and the rider is retrying via "Enable Location").
   function requestAndCenterOnMe() {
+    if (myLocation) {
+      centerOnLocation(myLocation.lat, myLocation.lon);
+      return;
+    }
     if (!navigator.geolocation) {
       setLocStatus("unsupported");
       return;
