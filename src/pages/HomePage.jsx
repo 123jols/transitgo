@@ -308,37 +308,47 @@ export default function HomePage() {
     setFromSuggestions([]);
   };
 
+  // Resolves to the known stop nearest the device's current GPS fix (within
+  // MAX_AUTO_LOCATE_KM), or null if location is unavailable/denied/too far.
+  const locateNearestStop = () =>
+    new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const userLoc = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          const nearest = stops
+            .map((stop) => ({ stop, distanceKm: haversineDistanceKm(userLoc, stop) }))
+            .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+          resolve(nearest && nearest.distanceKm <= MAX_AUTO_LOCATE_KM ? nearest.stop : null);
+        },
+        () => resolve(null),
+        { timeout: 8000 }
+      );
+    });
+
   useEffect(() => {
     fromRef.current = from;
   }, [from]);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
     setLocStatus("locating");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        // Don't clobber an origin the user already picked while we were
-        // waiting on the GPS fix.
-        if (fromRef.current) {
-          setLocStatus("idle");
-          return;
-        }
-        const userLoc = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        const nearest = stops
-          .map((stop) => ({ stop, distanceKm: haversineDistanceKm(userLoc, stop) }))
-          .sort((a, b) => a.distanceKm - b.distanceKm)[0];
-
-        if (!nearest || nearest.distanceKm > MAX_AUTO_LOCATE_KM) {
-          setLocStatus("denied");
-          return;
-        }
-
-        selectFrom(nearest.stop);
+    locateNearestStop().then((stop) => {
+      // Don't clobber an origin the user already picked while we were
+      // waiting on the GPS fix.
+      if (fromRef.current) {
+        setLocStatus("idle");
+        return;
+      }
+      if (stop) {
+        selectFrom(stop);
         setLocStatus("ok");
-      },
-      () => setLocStatus("denied"),
-      { timeout: 8000 }
-    );
+      } else {
+        setLocStatus("denied");
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -402,33 +412,41 @@ export default function HomePage() {
     }, 220);
   };
 
-  const applyTerminalStop = (stop) => {
-    setFrom(stop);
-    setFromQuery(stop.name);
-    setFromSuggestions([]);
-    setNavTab("home");
-    setActiveTab("search");
-  };
-
-  const applyAttractionStop = (stop) => {
+  // Used by both the Terminals and Explore quick-pick lists: the tapped stop
+  // becomes the destination, and the origin is either whatever's already
+  // selected or (failing that) a live GPS fix snapped to the nearest stop —
+  // so picking a place to go is enough to see routes, no manual "From" step.
+  const viewRoutesTo = async (stop) => {
     setTo(stop);
     setToQuery(stop.name);
     setToSuggestions([]);
     setNavTab("home");
 
-    if (from) {
-      setActiveTab("results");
-      setIsSearching(true);
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-      searchTimeoutRef.current = window.setTimeout(() => {
-        executeSearch(from, stop);
-        searchTimeoutRef.current = null;
-      }, 220);
-    } else {
+    let origin = from;
+    if (!origin) {
       setActiveTab("search");
+      setLocStatus("locating");
+      origin = await locateNearestStop();
+      if (origin) {
+        setFrom(origin);
+        setFromQuery(origin.name);
+        setLocStatus("ok");
+      } else {
+        setLocStatus("denied");
+      }
     }
+
+    if (!origin) return;
+
+    setActiveTab("results");
+    setIsSearching(true);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = window.setTimeout(() => {
+      executeSearch(origin, stop);
+      searchTimeoutRef.current = null;
+    }, 220);
   };
 
   const openRouteDetails = (route) => {
@@ -516,7 +534,7 @@ export default function HomePage() {
   if (navTab === "terminals") {
     return (
       <>
-        <TerminalsPage stops={stops} onViewRoutes={applyTerminalStop} />
+        <TerminalsPage stops={stops} onViewRoutes={viewRoutesTo} />
         <BottomNav active={navTab} onChange={setNavTab} />
       </>
     );
@@ -552,7 +570,7 @@ export default function HomePage() {
           <>
             <h2 className="hero-headline">Explore the map</h2>
             <p className="hero-subhead">Search anywhere · Drag pins to fine-tune</p>
-            <TouristSpots stops={stops} onSelect={applyAttractionStop} />
+            <TouristSpots stops={stops} onSelect={viewRoutesTo} />
           </>
         )}
 

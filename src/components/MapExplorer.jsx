@@ -92,12 +92,20 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
   const originMarkerRef = useRef(null);
   const destMarkerRef = useRef(null);
   const routeLayerRef = useRef(null);
+  const myLocationMarkerRef = useRef(null);
+  const myLocationAccuracyRef = useRef(null);
+  const watchIdRef = useRef(null);
+  const hasCenteredOnMeRef = useRef(false);
+  const userInteractedRef = useRef(false);
 
   const [origin, setOrigin] = useState(null);
   const [dest, setDest] = useState(null);
   const [routing, setRouting] = useState(false);
   const [routeInfo, setRouteInfo] = useState(null);
   const [error, setError] = useState("");
+  const [myLocation, setMyLocation] = useState(null);
+  // idle | locating | granted | denied | unsupported
+  const [locStatus, setLocStatus] = useState("idle");
 
   const from = usePlaceSearch();
   const to = usePlaceSearch();
@@ -110,6 +118,104 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
     mapRef.current = map;
     return () => map.remove();
   }, []);
+
+  // Once the rider drags the map themselves, stop auto-recentering on GPS
+  // updates — only the "My Location" button should move the view after that.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const onDragStart = () => { userInteractedRef.current = true; };
+    map.on("dragstart", onDragStart);
+    return () => map.off("dragstart", onDragStart);
+  }, []);
+
+  function centerOnLocation(lat, lon) {
+    const map = mapRef.current;
+    if (!map) return;
+    userInteractedRef.current = false;
+    hasCenteredOnMeRef.current = true;
+    map.setView([lat, lon], Math.max(map.getZoom(), 16));
+  }
+
+  // Continuously tracks the device's real GPS position (never a hardcoded
+  // fallback) so the blue dot moves live as the rider moves.
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocStatus("unsupported");
+      return;
+    }
+
+    setLocStatus("locating");
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        setMyLocation({ lat: latitude, lon: longitude, accuracy });
+        setLocStatus("granted");
+        if (!hasCenteredOnMeRef.current && !userInteractedRef.current) {
+          centerOnLocation(latitude, longitude);
+        }
+      },
+      () => setLocStatus("denied"),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    );
+
+    return () => {
+      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, []);
+
+  // Draws/updates the Google Maps-style blue dot + accuracy halo whenever a
+  // new GPS fix comes in.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !myLocation) return;
+    const latlng = [myLocation.lat, myLocation.lon];
+
+    if (!myLocationMarkerRef.current) {
+      const icon = L.divIcon({
+        className: "my-location-icon-wrapper",
+        html: '<div class="my-location-pulse"></div><div class="my-location-dot"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
+      myLocationMarkerRef.current = L.marker(latlng, { icon, interactive: false, zIndexOffset: 1000 }).addTo(map);
+    } else {
+      myLocationMarkerRef.current.setLatLng(latlng);
+    }
+
+    if (!myLocationAccuracyRef.current) {
+      myLocationAccuracyRef.current = L.circle(latlng, {
+        radius: myLocation.accuracy,
+        color: "#1a73e8",
+        weight: 1,
+        opacity: 0.25,
+        fillColor: "#1a73e8",
+        fillOpacity: 0.12,
+        interactive: false,
+      }).addTo(map);
+    } else {
+      myLocationAccuracyRef.current.setLatLng(latlng);
+      myLocationAccuracyRef.current.setRadius(myLocation.accuracy);
+    }
+  }, [myLocation]);
+
+  function requestAndCenterOnMe() {
+    if (!navigator.geolocation) {
+      setLocStatus("unsupported");
+      return;
+    }
+    setLocStatus("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        setMyLocation({ lat: latitude, lon: longitude, accuracy });
+        setLocStatus("granted");
+        centerOnLocation(latitude, longitude);
+      },
+      () => setLocStatus("denied"),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
 
   useEffect(() => {
     const map = mapRef.current;
@@ -309,8 +415,12 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
   );
 
   if (fullscreen) {
+    // zIndex: 0 makes this wrapper its own stacking context, so the overlays
+    // below (plain positive z-index) correctly paint above Leaflet's internal
+    // panes (its map pane alone sits at z-index 400) instead of leaking out
+    // and losing to them.
     return (
-      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div style={{ position: "relative", width: "100%", height: "100%", zIndex: 0 }}>
         <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
         {showSearchOverlay && (
           <div style={{
@@ -322,6 +432,25 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
             {(routeInfo || error || routing) && <div style={{ marginTop: 10 }}>{statusInfo}</div>}
           </div>
         )}
+
+        {(locStatus === "denied" || locStatus === "unsupported") && (
+          <div className="my-location-banner" style={{ top: showSearchOverlay ? 230 : 88 }}>
+            <i className="ti ti-map-pin-off" />
+            <span>{locStatus === "unsupported" ? "Location isn't available on this device" : "Location access is off"}</span>
+            <button type="button" onClick={requestAndCenterOnMe}>Enable Location</button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="my-location-button"
+          style={{ top: showSearchOverlay ? 230 : 88 }}
+          onClick={requestAndCenterOnMe}
+          title="My Location"
+          aria-label="Center map on my location"
+        >
+          <i className={`ti ti-current-location ${locStatus === "locating" ? "my-location-button-spin" : ""}`} />
+        </button>
       </div>
     );
   }

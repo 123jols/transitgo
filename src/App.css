@@ -1868,6 +1868,104 @@ button:active {
   margin: 0 auto;
 }
 
+/* Google Maps-style current-location dot */
+.leaflet-div-icon.my-location-icon-wrapper {
+  background: transparent;
+  border: none;
+}
+
+.my-location-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1a73e8;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.my-location-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(26, 115, 232, 0.35);
+  transform: translate(-50%, -50%) scale(1);
+  animation: myLocationPulse 2.2s ease-out infinite;
+}
+
+@keyframes myLocationPulse {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+  70%, 100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; }
+}
+
+.my-location-button {
+  position: absolute;
+  top: 88px;
+  right: 16px;
+  z-index: 140;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  color: var(--accent-primary);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  box-shadow: 0 6px 18px rgba(var(--shadow-rgb), 0.2);
+}
+
+.my-location-button-spin {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+.my-location-banner {
+  position: absolute;
+  top: 88px;
+  left: 16px;
+  right: 68px;
+  z-index: 140;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 18px rgba(var(--shadow-rgb), 0.18);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.my-location-banner i {
+  font-size: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.my-location-banner span {
+  flex: 1;
+}
+
+.my-location-banner button {
+  flex-shrink: 0;
+  background: var(--accent-primary);
+  color: #04170a;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* Media queries */
 @media (min-width: 1024px) {
   .bottom-nav {
