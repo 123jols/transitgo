@@ -54,10 +54,14 @@ function usePlaceSearch() {
   const [suggestions, setSuggestions] = useState([]);
   const [searching, setSearching] = useState(false);
   const timeoutRef = useRef(null);
+  // Bumped on every keystroke so a slow, older request can't overwrite the
+  // suggestions with stale results after a newer one has already resolved.
+  const requestIdRef = useRef(0);
 
   function onChange(value) {
     setQuery(value);
     clearTimeout(timeoutRef.current);
+    const requestId = ++requestIdRef.current;
 
     if (value.trim().length < 3) {
       setSuggestions([]);
@@ -69,11 +73,12 @@ function usePlaceSearch() {
       try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&countrycodes=ph&viewbox=${CEBU_VIEWBOX}&bounded=1`;
         const res = await fetch(url, { headers: { Accept: "application/json" } });
-        setSuggestions(await res.json());
+        const data = await res.json();
+        if (requestId === requestIdRef.current) setSuggestions(data);
       } catch {
-        setSuggestions([]);
+        if (requestId === requestIdRef.current) setSuggestions([]);
       } finally {
-        setSearching(false);
+        if (requestId === requestIdRef.current) setSearching(false);
       }
     }, 500);
   }
@@ -114,7 +119,10 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
 
   useEffect(() => {
     const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([CEBU_CENTER.lat, CEBU_CENTER.lon], 13);
-    L.control.zoom({ position: "bottomleft" }).addTo(map);
+    // "bottomleft" used to sit under the persistent BottomSheet/BottomNav
+    // (both render above the map layer), making the zoom buttons
+    // unreachable most of the time. "topleft" is never covered by them.
+    L.control.zoom({ position: "topleft" }).addTo(map);
     mapRef.current = map;
     // The container's real size (100dvh layout) isn't always settled the
     // instant L.map() runs, which can leave Leaflet's internal size cache
@@ -432,7 +440,7 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
     // panes (its map pane alone sits at z-index 400) instead of leaking out
     // and losing to them.
     return (
-      <div style={{ position: "relative", width: "100%", height: "100%", zIndex: 0 }}>
+      <div className={`map-explorer-fullscreen ${showSearchOverlay ? "has-search-overlay" : ""}`} style={{ position: "relative", width: "100%", height: "100%", zIndex: 0 }}>
         <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
         {showSearchOverlay && (
           <div style={{
