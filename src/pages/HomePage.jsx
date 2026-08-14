@@ -4,6 +4,8 @@ import RouteDetailsPage from "./RouteDetailsPage";
 import WeatherTip from "../components/WeatherTip";
 import ThemeToggle from "../components/ThemeToggle";
 import MapExplorer from "../components/MapExplorer";
+import TouristSpots from "../components/TouristSpots";
+import NearbyTerminals from "../components/NearbyTerminals";
 import BottomSheet from "../components/BottomSheet";
 import BottomNav from "../components/BottomNav";
 import TripsPage from "./TripsPage";
@@ -315,6 +317,35 @@ export default function HomePage() {
     }, 220);
   };
 
+  const applyTerminalStop = (stop) => {
+    setFrom(stop);
+    setFromQuery(stop.name);
+    setFromSuggestions([]);
+    setNavTab("home");
+    setActiveTab("search");
+  };
+
+  const applyAttractionStop = (stop) => {
+    setTo(stop);
+    setToQuery(stop.name);
+    setToSuggestions([]);
+    setNavTab("home");
+
+    if (from) {
+      setActiveTab("results");
+      setIsSearching(true);
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+      searchTimeoutRef.current = window.setTimeout(() => {
+        executeSearch(from, stop);
+        searchTimeoutRef.current = null;
+      }, 220);
+    } else {
+      setActiveTab("search");
+    }
+  };
+
   const openRouteDetails = (route) => {
     setRouteDetails(route);
     setActiveTab("details");
@@ -382,7 +413,7 @@ export default function HomePage() {
   if (navTab === "trips") {
     return (
       <>
-        <TripsPage />
+        <TripsPage stops={stops} onSelectTerminal={applyTerminalStop} />
         <BottomNav active={navTab} onChange={setNavTab} />
       </>
     );
@@ -391,7 +422,7 @@ export default function HomePage() {
   if (navTab === "profile") {
     return (
       <>
-        <ProfilePage />
+        <ProfilePage stops={stops} onSelectTerminal={applyTerminalStop} />
         <BottomNav active={navTab} onChange={setNavTab} />
       </>
     );
@@ -418,6 +449,7 @@ export default function HomePage() {
           <>
             <h2 className="hero-headline">Explore the map</h2>
             <p className="hero-subhead">Search anywhere · Drag pins to fine-tune</p>
+            <NearbyTerminals stops={stops} onSelect={applyTerminalStop} />
             <div className="tips-section">
               <p className="section-label">Tips</p>
               <div className="tips-grid">
@@ -439,6 +471,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+            <TouristSpots stops={stops} onSelect={applyAttractionStop} />
           </>
         )}
 
@@ -545,6 +578,8 @@ export default function HomePage() {
       {/* Main content tabs */}
       {activeTab === "search" && (
         <div className={`tab-content search-tab ${searchAnimated ? "animated" : ""}`}>
+          <NearbyTerminals stops={stops} onSelect={applyTerminalStop} />
+
           {/* Recent searches */}
           {recentSearches.length > 0 && (
             <div className="recent-section">
