@@ -91,7 +91,7 @@ function usePlaceSearch() {
   return { query, setQuery: clear, suggestions, searching, onChange };
 }
 
-export default function MapExplorer({ fullscreen = false, showSearchOverlay = true }) {
+export default function MapExplorer({ fullscreen = false, showSearchOverlay = true, onLocationFix }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const originMarkerRef = useRef(null);
@@ -102,6 +102,11 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
   const watchIdRef = useRef(null);
   const hasCenteredOnMeRef = useRef(false);
   const userInteractedRef = useRef(false);
+  // Counts consecutive geolocation failures. The browser only ever shows its
+  // native permission prompt once per origin — after that, retrying just
+  // fails silently with no UI — so a second failure means the rider needs to
+  // flip it back on in Settings themselves, not tap "Enable Location" again.
+  const denialCountRef = useRef(0);
 
   const [origin, setOrigin] = useState(null);
   const [dest, setDest] = useState(null);
@@ -109,7 +114,7 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
   const [routeInfo, setRouteInfo] = useState(null);
   const [error, setError] = useState("");
   const [myLocation, setMyLocation] = useState(null);
-  // idle | locating | granted | denied | unsupported
+  // idle | locating | granted | denied | blocked | unsupported
   const [locStatus, setLocStatus] = useState("idle");
 
   const from = usePlaceSearch();
@@ -118,17 +123,26 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
   const tileLayerRef = useRef(null);
 
   useEffect(() => {
+    // No zoom control: pinch-to-zoom, drag, scroll-wheel, and double-click
+    // zoom all stay on by default in Leaflet — only the +/- buttons are off.
     const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([CEBU_CENTER.lat, CEBU_CENTER.lon], 13);
-    // "bottomleft" used to sit under the persistent BottomSheet/BottomNav
-    // (both render above the map layer), making the zoom buttons
-    // unreachable most of the time. "topleft" is never covered by them.
-    L.control.zoom({ position: "topleft" }).addTo(map);
     mapRef.current = map;
+
     // The container's real size (100dvh layout) isn't always settled the
-    // instant L.map() runs, which can leave Leaflet's internal size cache
-    // stale; invalidateSize() on the next frame corrects it.
-    requestAnimationFrame(() => map.invalidateSize());
-    return () => map.remove();
+    // instant L.map() runs — on some mobile browsers this leaves Leaflet's
+    // internal size cache stale, which shows up as a tiny, zoomed-way-out,
+    // tiled-world map instead of Cebu. A ResizeObserver keeps it correct
+    // for as long as the container's actual size is still settling, not
+    // just once on the next frame.
+    const ro = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    ro.observe(mapContainerRef.current);
+
+    return () => {
+      ro.disconnect();
+      map.remove();
+    };
   }, []);
 
   // Once the rider drags the map themselves, stop auto-recentering on GPS
@@ -160,20 +174,31 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
     setLocStatus("locating");
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
+        denialCountRef.current = 0;
         const { latitude, longitude, accuracy } = pos.coords;
         setMyLocation({ lat: latitude, lon: longitude, accuracy });
         setLocStatus("granted");
+        onLocationFix?.(latitude, longitude);
         if (!hasCenteredOnMeRef.current && !userInteractedRef.current) {
           centerOnLocation(latitude, longitude);
         }
       },
-      () => setLocStatus("denied"),
+      (err) => {
+        // Only an actual permission denial (code 1) counts toward "blocked"
+        // — a GPS timeout or temporary unavailability (codes 2/3) isn't a
+        // permission problem and should stay retryable every time.
+        if (err.code === err.PERMISSION_DENIED) denialCountRef.current += 1;
+        setLocStatus(denialCountRef.current >= 2 ? "blocked" : "denied");
+      },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
 
     return () => {
       if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
     };
+    // Intentionally mount-only: re-subscribing watchPosition on every
+    // onLocationFix identity change would restart GPS tracking for no reason.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Draws/updates the Google Maps-style blue dot + accuracy halo whenever a
@@ -225,14 +250,22 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
       return;
     }
     setLocStatus("locating");
+    // A real navigator.geolocation call, not a UI-only state change — this
+    // is what actually triggers the browser's native permission prompt on
+    // iOS/Android when the rider hasn't decided yet.
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        denialCountRef.current = 0;
         const { latitude, longitude, accuracy } = pos.coords;
         setMyLocation({ lat: latitude, lon: longitude, accuracy });
         setLocStatus("granted");
+        onLocationFix?.(latitude, longitude);
         centerOnLocation(latitude, longitude);
       },
-      () => setLocStatus("denied"),
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) denialCountRef.current += 1;
+        setLocStatus(denialCountRef.current >= 2 ? "blocked" : "denied");
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   }
@@ -440,7 +473,7 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
     // panes (its map pane alone sits at z-index 400) instead of leaking out
     // and losing to them.
     return (
-      <div className={`map-explorer-fullscreen ${showSearchOverlay ? "has-search-overlay" : ""}`} style={{ position: "relative", width: "100%", height: "100%", zIndex: 0 }}>
+      <div style={{ position: "relative", width: "100%", height: "100%", zIndex: 0 }}>
         <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
         {showSearchOverlay && (
           <div style={{
@@ -453,11 +486,20 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
           </div>
         )}
 
-        {(locStatus === "denied" || locStatus === "unsupported") && (
+        {(locStatus === "denied" || locStatus === "blocked" || locStatus === "unsupported") && (
           <div className="my-location-banner" style={{ top: showSearchOverlay ? 230 : 88 }}>
             <i className="ti ti-map-pin-off" />
-            <span>{locStatus === "unsupported" ? "Location isn't available on this device" : "Location access is off"}</span>
-            <button type="button" onClick={requestAndCenterOnMe}>Enable Location</button>
+            <div className="my-location-banner-text">
+              <span>{locStatus === "unsupported" ? "Location isn't available on this device" : "Location access is off"}</span>
+              {locStatus === "blocked" && (
+                <small>Enable it for this site in your browser/device Settings, then try again.</small>
+              )}
+            </div>
+            {locStatus !== "unsupported" && (
+              <button type="button" onClick={requestAndCenterOnMe}>
+                {locStatus === "blocked" ? "Try Again" : "Enable Location"}
+              </button>
+            )}
           </div>
         )}
 

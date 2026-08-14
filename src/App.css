@@ -1904,18 +1904,6 @@ button:active {
   70%, 100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; }
 }
 
-/* Leaflet's default "bottomleft" zoom control sits under the persistent
-   BottomSheet/BottomNav (both render above the map layer), making it
-   unreachable most of the time. Pinning it under the floating header
-   instead keeps it clear of both regardless of sheet snap state. */
-.map-explorer-fullscreen .leaflet-top.leaflet-left {
-  top: 88px;
-}
-
-.map-explorer-fullscreen.has-search-overlay .leaflet-top.leaflet-left {
-  top: 230px;
-}
-
 .my-location-button {
   position: absolute;
   top: 88px;
@@ -1962,8 +1950,17 @@ button:active {
   flex-shrink: 0;
 }
 
-.my-location-banner span {
+.my-location-banner-text {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.my-location-banner-text small {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 
 .my-location-banner button {

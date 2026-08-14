@@ -308,8 +308,17 @@ export default function HomePage() {
     setFromSuggestions([]);
   };
 
-  // Resolves to the known stop nearest the device's current GPS fix (within
-  // MAX_AUTO_LOCATE_KM), or null if location is unavailable/denied/too far.
+  // The known stop nearest a given GPS fix, or null if none are within
+  // MAX_AUTO_LOCATE_KM.
+  const nearestStopTo = (lat, lon) => {
+    const nearest = stops
+      .map((stop) => ({ stop, distanceKm: haversineDistanceKm({ lat, lon }, stop) }))
+      .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+    return nearest && nearest.distanceKm <= MAX_AUTO_LOCATE_KM ? nearest.stop : null;
+  };
+
+  // Resolves to the known stop nearest the device's current GPS fix, or
+  // null if location is unavailable/denied/too far.
   const locateNearestStop = () =>
     new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -317,17 +326,25 @@ export default function HomePage() {
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const userLoc = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-          const nearest = stops
-            .map((stop) => ({ stop, distanceKm: haversineDistanceKm(userLoc, stop) }))
-            .sort((a, b) => a.distanceKm - b.distanceKm)[0];
-          resolve(nearest && nearest.distanceKm <= MAX_AUTO_LOCATE_KM ? nearest.stop : null);
-        },
+        (pos) => resolve(nearestStopTo(pos.coords.latitude, pos.coords.longitude)),
         () => resolve(null),
         { timeout: 8000 }
       );
     });
+
+  // The map (MapExplorer) tracks GPS continuously on its own and reports
+  // every fix here, so a location grant made via its "Enable Location" or
+  // "My Location" controls still fills in this page's own "Your location"
+  // field — even if this page's own initial locate attempt above had
+  // already failed/been denied and won't retry by itself.
+  const applyGpsFix = (lat, lon) => {
+    if (fromRef.current) return;
+    const stop = nearestStopTo(lat, lon);
+    if (stop) {
+      selectFrom(stop);
+      setLocStatus("ok");
+    }
+  };
 
   useEffect(() => {
     fromRef.current = from;
@@ -553,7 +570,7 @@ export default function HomePage() {
     <div className="home-shell">
       {/* Full-screen map background */}
       <div className="home-map-layer">
-        <MapExplorer fullscreen showSearchOverlay={navTab === "explore"} />
+        <MapExplorer fullscreen showSearchOverlay={navTab === "explore"} onLocationFix={applyGpsFix} />
       </div>
 
       {/* Floating branding + theme toggle */}
