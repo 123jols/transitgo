@@ -5,6 +5,7 @@ import WeatherTip from "../components/WeatherTip";
 import ThemeToggle from "../components/ThemeToggle";
 import MapExplorer from "../components/MapExplorer";
 import TouristSpots from "../components/TouristSpots";
+import SwipeToDelete from "../components/SwipeToDelete";
 import BottomSheet from "../components/BottomSheet";
 import BottomNav from "../components/BottomNav";
 import TripsPage from "./TripsPage";
@@ -134,6 +135,14 @@ export default function HomePage() {
   const saveRecentSearch = (entry) => {
     setRecentSearches((prevHistory) => {
       const nextHistory = [entry, ...prevHistory.filter((item) => item.label !== entry.label)].slice(0, 5);
+      window.localStorage.setItem("transitgo-recent-searches", JSON.stringify(nextHistory));
+      return nextHistory;
+    });
+  };
+
+  const removeRecentSearch = (label) => {
+    setRecentSearches((prevHistory) => {
+      const nextHistory = prevHistory.filter((item) => item.label !== label);
       window.localStorage.setItem("transitgo-recent-searches", JSON.stringify(nextHistory));
       return nextHistory;
     });
@@ -613,22 +622,22 @@ export default function HomePage() {
             <div className="recent-section">
               <p className="section-label">Recent</p>
               <div className="recent-card">
-                {recentSearches.map((search, idx) => (
-                  <button
-                    key={search.label}
-                    type="button"
-                    className="recent-row"
-                    onClick={() => applyPopularRoute({ from: search.from, to: search.to })}
-                  >
-                    <div className="recent-icon">
-                      <i className="ti ti-history"></i>
-                    </div>
-                    <div className="recent-content">
-                      <p className="recent-name">{search.label}</p>
-                      <p className="recent-type">Recent search</p>
-                    </div>
-                    {idx < recentSearches.length - 1 && <div className="row-divider"></div>}
-                  </button>
+                {recentSearches.map((search) => (
+                  <SwipeToDelete key={search.label} onDelete={() => removeRecentSearch(search.label)}>
+                    <button
+                      type="button"
+                      className="recent-row"
+                      onClick={() => applyPopularRoute({ from: search.from, to: search.to })}
+                    >
+                      <div className="recent-icon">
+                        <i className="ti ti-history"></i>
+                      </div>
+                      <div className="recent-content">
+                        <p className="recent-name">{search.label}</p>
+                        <p className="recent-type">Recent search</p>
+                      </div>
+                    </button>
+                  </SwipeToDelete>
                 ))}
               </div>
             </div>
