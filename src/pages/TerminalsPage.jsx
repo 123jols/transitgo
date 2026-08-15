@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { terminals } from "../data/terminals";
-import { haversineDistanceKm } from "../utils/geo";
+import { haversineDistanceKm, formatDistance } from "../utils/geo";
 
 export default function TerminalsPage({ stops, onViewRoutes }) {
   const [userLoc, setUserLoc] = useState(null);
@@ -57,7 +57,7 @@ export default function TerminalsPage({ stops, onViewRoutes }) {
                 </p>
               </div>
               {terminal.distanceKm !== undefined && (
-                <span className="terminal-card-distance">{terminal.distanceKm.toFixed(1)} km</span>
+                <span className="terminal-card-distance">{formatDistance(terminal.distanceKm)}</span>
               )}
             </div>
 

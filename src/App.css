@@ -1101,6 +1101,105 @@ button:active {
   opacity: 0.85;
 }
 
+/* Nearby Terminals card (HomePage, below the From field) */
+.nearby-terminals-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.nearby-terminal-list {
+  display: grid;
+  gap: 8px;
+}
+
+.nearby-terminal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(var(--border-rgb), 0.10);
+  border-radius: var(--radius-md);
+}
+
+.nearby-terminal-row > i {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--accent-primary-rgb), 0.10);
+  color: var(--accent-primary-deep);
+  font-size: 14px;
+}
+
+:root[data-theme="dark"] .nearby-terminal-row > i {
+  color: var(--accent-primary);
+}
+
+.nearby-terminal-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.nearby-terminal-row-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nearby-terminal-row-meta {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.nearby-terminal-row-routes {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.nearby-terminals-view-all {
+  justify-self: start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-primary-deep);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+:root[data-theme="dark"] .nearby-terminals-view-all {
+  color: var(--accent-primary);
+}
+
+.nearby-terminals-best {
+  background: rgba(var(--accent-primary-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-primary-rgb), 0.20);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.nearby-terminals-best-label {
+  margin: 0;
+  padding: 10px 12px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.nearby-terminals-best-label strong {
+  color: var(--text-primary);
+}
+
 /* Results tab */
 .results-tab {
   display: grid;
@@ -2048,12 +2147,36 @@ button:active {
 .ai-chat-map-canvas-wrap {
   position: relative;
   flex: 1;
-  min-height: 140px;
+  /* A fixed px floor here (the previous min-height: 140px) is exactly what
+     forces this element to overflow the popup's fixed-height flex column
+     whenever its siblings (fare card, status rows) take more space than
+     expected — it can't shrink to fit, so it pushes past the popup's
+     bounds instead. min-height: 0 is the correct flex idiom: let this
+     panel take whatever's actually left, down to nothing, rather than
+     demanding a floor the layout can't always afford. overflow: hidden is
+     a second guard so nothing inside (map tiles, overlays) can visually
+     leak past these bounds even if something inside miscalculates. */
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ai-chat-map-canvas {
   position: absolute;
   inset: 0;
+}
+
+.ai-chat-map-tile-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface-alt);
+  color: var(--text-faint);
+  font-size: 28px;
+  animation: pulse 1.4s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .ai-chat-map-locate-btn {
@@ -2148,6 +2271,19 @@ button:active {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  box-shadow: 0 2px 8px rgba(var(--shadow-rgb), 0.15);
+}
+
+.ai-chat-map-overlay-message {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 0 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  line-height: 1.4;
   box-shadow: 0 2px 8px rgba(var(--shadow-rgb), 0.15);
 }
 

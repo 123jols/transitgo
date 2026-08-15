@@ -5,6 +5,7 @@ import RouteDetailsPage from "./RouteDetailsPage";
 import WeatherTip from "../components/WeatherTip";
 import ThemeToggle from "../components/ThemeToggle";
 import MapExplorer from "../components/MapExplorer";
+import NearbyTerminalsCard from "../components/NearbyTerminalsCard";
 import TouristSpots from "../components/TouristSpots";
 import SwipeToDelete from "../components/SwipeToDelete";
 import BottomSheet from "../components/BottomSheet";
@@ -483,12 +484,6 @@ export default function HomePage() {
     }
   };
 
-  const selectTo = (stop) => {
-    setTo(stop);
-    setToQuery(stop.name);
-    setToSuggestions([]);
-  };
-
   const swapStops = () => {
     if (!from && !to) return;
     autoLocateRef.current = false;
@@ -764,7 +759,7 @@ export default function HomePage() {
               />
               <StopDropdown
                 suggestions={toSuggestions}
-                onSelect={selectTo}
+                onSelect={viewRoutesTo}
                 open={toSuggestions.length > 0}
               />
             </div>
@@ -815,6 +810,14 @@ export default function HomePage() {
               Try again
             </button>
           </p>
+        )}
+
+        {locStatus === "ok" && from && (
+          <NearbyTerminalsCard
+            userLocation={{ lat: from.lat, lon: from.lon }}
+            destination={to}
+            onViewAllTerminals={() => setNavTab("terminals")}
+          />
         )}
 
         {/* Quick destination chips */}

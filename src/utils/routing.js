@@ -1,4 +1,5 @@
 import { stops, jeepneyRoutes, walkLinks } from "../data/db";
+import { terminals, DEFAULT_TERMINAL_RADIUS_KM } from "../data/terminals";
 import { haversineDistanceKm } from "./geo";
 
 const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
@@ -150,6 +151,16 @@ function legsToRouteObject(legs) {
   };
 }
 
+// Fewest transfers first, then fastest, then cheapest — the single ranking
+// rule for "which trip is better," shared by findRoutesBetween's own result
+// ordering and by bestTerminalFor's cross-candidate comparison below so
+// there's one definition of "best," not two that could quietly disagree.
+export function compareTrips(a, b) {
+  if (a.transfers !== b.transfers) return a.transfers - b.transfers;
+  if (a.duration !== b.duration) return a.duration - b.duration;
+  return a.fare - b.fare;
+}
+
 // Finds real, direction-aware commuter itineraries between two stop IDs.
 // Searches direct routes first, then 1, 2, and up to 3 rides with transfers,
 // ranked by fewest rides, then duration, then fare.
@@ -166,11 +177,7 @@ export function findRoutesBetween(fromId, toId) {
     return true;
   });
 
-  deduped.sort((a, b) => {
-    if (a.transfers !== b.transfers) return a.transfers - b.transfers;
-    if (a.duration !== b.duration) return a.duration - b.duration;
-    return a.fare - b.fare;
-  });
+  deduped.sort(compareTrips);
 
   return deduped.slice(0, MAX_RESULTS);
 }
@@ -223,4 +230,43 @@ export function findNearbyRoutes(lat, lon, radiusKm = NEARBY_ROUTE_RADIUS_KM) {
 
   routes.sort((a, b) => a.distanceKm - b.distanceKm);
   return { routes, fallbackStops: [] };
+}
+
+// Which known terminal actually gives the best trip to a destination —
+// NOT just the nearest one. Only terminals with a stopId are routable
+// (data/terminals.js: 5 of the 8 are informational-only, e.g. the
+// provincial bus terminals); among those, distance and trip quality can
+// genuinely disagree (a slightly farther terminal can have a direct route
+// while the nearest one needs a transfer), so this actually runs
+// findRoutesBetween per candidate and ranks by compareTrips rather than
+// assuming "closest terminal" is "best terminal."
+//
+// This is informational only — it never changes what a rider's own
+// resolved origin stop is used to search (that stays whatever nearestStop
+// already picked, which correctly includes the 5 non-terminal stops too).
+// Restricting real trip search to terminals-only would be a regression for
+// any origin whose nearest stop isn't one of the 3 routable terminals.
+export function bestTerminalFor(originLatLon, destStopId, radiusKm = DEFAULT_TERMINAL_RADIUS_KM) {
+  if (!destStopId) return null;
+
+  const routable = terminals
+    .filter((t) => t.stopId)
+    .map((t) => ({ terminal: t, distanceKm: haversineDistanceKm(originLatLon, t) }))
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+  if (!routable.length) return null;
+
+  const within = routable.filter((t) => t.distanceKm <= radiusKm);
+  const candidates = within.length ? within : routable.slice(0, 1);
+
+  let best = null;
+  candidates.forEach(({ terminal, distanceKm }) => {
+    if (terminal.stopId === destStopId) return; // already there
+    const trip = findRoutesBetween(terminal.stopId, destStopId)[0];
+    if (!trip) return;
+    if (!best || compareTrips(trip, best.trip) < 0) {
+      best = { terminal, distanceKm, trip };
+    }
+  });
+
+  return best;
 }

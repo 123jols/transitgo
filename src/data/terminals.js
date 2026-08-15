@@ -1,3 +1,5 @@
+import { haversineDistanceKm } from "../utils/geo";
+
 // Terminal/transport-hub registry for the Terminals page.
 // stopId links a terminal to a stop in db.js when the two are the same real
 // place — that's what lets "View Routes" hand off to the actual jeepney
@@ -110,3 +112,40 @@ export const terminals = [
     longRoute: true,
   },
 ];
+
+// Real terminal spacing in this dataset is mostly 1-3km apart (city-scale,
+// not walkable-scale) with one close pair (SM City/North Bus, ~196m) — 600m
+// is a genuinely walkable cutoff without making "nothing in radius" the
+// default case almost everywhere, the way a very tight ~250m radius would.
+export const DEFAULT_TERMINAL_RADIUS_KM = 0.6;
+
+// How close two terminals' distances have to be before route-count (more
+// options at roughly the same walk) breaks the tie instead of raw distance
+// alone. 150m comfortably covers the one close real pair above without ever
+// promoting a terminal that's meaningfully farther away.
+const TIEBREAK_DELTA_KM = 0.15;
+
+// Terminals near a GPS fix, distance-sorted, terminals with more routes
+// winning ties within TIEBREAK_DELTA_KM. `nearest`/`nearby` are the
+// within-radius subset; when nothing qualifies, `nearest` falls back to the
+// closest terminal regardless of distance (so callers always have a "show
+// the nearest anyway" answer) and `nearby` stays empty.
+export function nearestTerminals(lat, lon, radiusKm = DEFAULT_TERMINAL_RADIUS_KM) {
+  const all = terminals
+    .map((terminal) => ({ ...terminal, distanceKm: haversineDistanceKm({ lat, lon }, terminal) }))
+    .sort((a, b) => {
+      const d = a.distanceKm - b.distanceKm;
+      if (Math.abs(d) > TIEBREAK_DELTA_KM) return d;
+      return b.routes.length - a.routes.length;
+    });
+
+  const within = all.filter((t) => t.distanceKm <= radiusKm);
+  const inRadius = within.length > 0;
+
+  return {
+    inRadius,
+    nearest: inRadius ? within[0] : all[0] || null,
+    nearby: inRadius ? within.slice(1) : [],
+    all,
+  };
+}

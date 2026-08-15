@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import useTheme from "../hooks/useTheme";
 import { stops } from "../data/db";
 import { findRoutesBetween, nearestStop, findNearbyRoutes } from "../utils/routing";
-import { haversineDistanceKm } from "../utils/geo";
+import { haversineDistanceKm, formatDistance } from "../utils/geo";
 import { assembleTripGeometry } from "../utils/routeGeometry";
 import FareEtaCard from "./FareEtaCard";
 
@@ -54,10 +54,6 @@ function describeGeoError(err) {
   }
 }
 
-function formatDistance(km) {
-  return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`;
-}
-
 function segmentColor(segment) {
   if (segment.kind === "walk") return cssVar("--accent-walk", "#6b7280");
   if (segment.type === "bus") return cssVar("--accent-bus", "#2a78d6");
@@ -81,6 +77,17 @@ export default function AiChatMap() {
   const tripOkRef = useRef(false);
 
   const { theme } = useTheme();
+  // Map construction is now deferred (waits for a real container size, see
+  // the init effect below) — so it's no longer safe for other effects to
+  // assume mapRef.current is populated on their first run. Effects that
+  // touch the Leaflet map depend on this too, so they re-run (or run for
+  // the first time) once construction actually finishes, even if none of
+  // their other own dependencies have changed since mount (this was
+  // exactly the bug: the tile-layer effect only depends on [theme], which
+  // essentially never changes again after mount, so it silently never
+  // added a tile layer at all once the map stopped being ready synchronously).
+  const [mapReady, setMapReady] = useState(false);
+  const [tilesLoaded, setTilesLoaded] = useState(false);
   const [myLocation, setMyLocation] = useState(null);
   const [locStatus, setLocStatus] = useState("idle"); // idle | locating | granted | denied | unsupported
   const [locError, setLocError] = useState("");
@@ -91,40 +98,102 @@ export default function AiChatMap() {
   const [geometry, setGeometry] = useState(null);
   const [routeError, setRouteError] = useState("");
 
-  // Map init — mount-only.
+  // Map init — mount-only. Unlike MapExplorer (mounted once as part of the
+  // page's persistent layout, so its container is already sized by the
+  // time its effect runs), this map is constructed the instant the chat
+  // popup + map toggle both just opened in the same commit — the container
+  // can still measure 0x0 at that exact moment. Constructing Leaflet on a
+  // zero-size container corrupts its internal pixel-origin/zoom math in a
+  // way invalidateSize() alone doesn't reliably repair, which is what was
+  // showing up as a zoomed-way-out view (other Visayas cities visible
+  // alongside Cebu), a blank gray gap, and the map reading as compressed
+  // to the bottom. So: wait for a real, non-zero size before ever calling
+  // L.map(), instead of constructing it optimistically and patching after.
   useEffect(() => {
-    const map = L.map(mapContainerRef.current, { zoomControl: false }).setView(
-      [CEBU_CENTER.lat, CEBU_CENTER.lon],
-      DEFAULT_ZOOM
-    );
-    mapRef.current = map;
+    let map;
+    let ro;
+    let rafId;
+    let cancelled = false;
 
-    // Same fix MapExplorer.jsx uses: the popup's flex layout doesn't always
-    // settle the container's real size before L.map() runs.
-    const ro = new ResizeObserver(() => map.invalidateSize());
-    ro.observe(mapContainerRef.current);
+    function init() {
+      if (cancelled) return;
+      const el = mapContainerRef.current;
+      if (!el || el.clientWidth === 0 || el.clientHeight === 0) {
+        rafId = requestAnimationFrame(init);
+        return;
+      }
 
-    const onDragStart = () => { userInteractedRef.current = true; };
-    map.on("dragstart", onDragStart);
+      map = L.map(el, { zoomControl: false }).setView([CEBU_CENTER.lat, CEBU_CENTER.lon], DEFAULT_ZOOM);
+      mapRef.current = map;
+      setMapReady(true);
+
+      ro = new ResizeObserver(() => {
+        map.invalidateSize();
+        // Belt-and-suspenders: re-assert the view after invalidateSize so a
+        // resize mid-animation can't leave the center/zoom drifted.
+        if (!hasCenteredRef.current) {
+          map.setView([CEBU_CENTER.lat, CEBU_CENTER.lon], DEFAULT_ZOOM);
+        }
+      });
+      ro.observe(el);
+
+      map.on("dragstart", () => { userInteractedRef.current = true; });
+
+      // The popup itself runs a 200ms entrance animation (chatWindowIn,
+      // App.css) concurrently with all of this. CSS transforms don't affect
+      // clientWidth/clientHeight, so the size this effect measured above is
+      // already correct — but invalidateSize() once more when that
+      // animation finishes is cheap, explicit insurance against any
+      // browser that settles final layout a beat later than the transform.
+      const popup = el.closest(".ai-chat-window");
+      const onPopupAnimationEnd = () => map.invalidateSize();
+      popup?.addEventListener("animationend", onPopupAnimationEnd);
+      if (popup) {
+        const cleanupAnimListener = () => popup.removeEventListener("animationend", onPopupAnimationEnd);
+        map.once("remove", cleanupAnimListener);
+      }
+
+      if (import.meta.env.DEV) {
+        console.debug("[AiChatMap] map initialized", { size: [el.clientWidth, el.clientHeight], center: CEBU_CENTER, zoom: DEFAULT_ZOOM });
+      }
+    }
+
+    init();
 
     return () => {
-      ro.disconnect();
-      map.off("dragstart", onDragStart);
-      map.remove();
+      cancelled = true;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (ro) ro.disconnect();
+      if (map) map.remove();
     };
   }, []);
 
-  // Tile layer per theme.
+  // Tile layer per theme. Depends on mapReady (not just theme) because
+  // theme essentially never changes again after mount — without mapReady
+  // in the deps, this effect's one and only run could land before
+  // mapRef.current was populated (map construction is now deferred, see
+  // the init effect above) and silently never add a tile layer at all,
+  // which is exactly what showed up as a permanent gray rectangle.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
-    tileLayerRef.current = L.tileLayer(TILE_URLS[theme] || TILE_URLS.light, {
+    setTilesLoaded(false);
+    const layer = L.tileLayer(TILE_URLS[theme] || TILE_URLS.light, {
       attribution: TILE_ATTRIBUTION,
       maxZoom: 19,
       subdomains: "abcd",
-    }).addTo(map);
-  }, [theme]);
+    });
+    layer.on("load", () => {
+      setTilesLoaded(true);
+      if (import.meta.env.DEV) console.debug("[AiChatMap] tiles loaded");
+    });
+    layer.on("tileerror", (err) => {
+      console.error("[AiChatMap] tile failed to load", err.tile?.src);
+    });
+    layer.addTo(map);
+    tileLayerRef.current = layer;
+  }, [theme, mapReady]);
 
   // Continuous GPS watch — mount-only, cleared on unmount (i.e. when the
   // rider closes the map panel), so permission is only requested once the
@@ -155,6 +224,10 @@ export default function AiChatMap() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !myLocation) return;
+    if (!Number.isFinite(myLocation.lat) || !Number.isFinite(myLocation.lon)) {
+      console.error("[AiChatMap] discarded non-finite GPS fix", myLocation);
+      return;
+    }
     const latlng = [myLocation.lat, myLocation.lon];
 
     if (!myLocationMarkerRef.current) {
@@ -186,9 +259,19 @@ export default function AiChatMap() {
 
     if (!hasCenteredRef.current && !userInteractedRef.current) {
       hasCenteredRef.current = true;
-      map.setView(latlng, Math.max(map.getZoom(), DEFAULT_ZOOM));
+      // map.getZoom() can be corrupted (NaN) if invalidateSize() ever runs
+      // mid-resize before the map settles — Math.max(NaN, x) is NaN, which
+      // Leaflet would otherwise silently accept as "zoom out to the whole
+      // world." Falling back to DEFAULT_ZOOM whenever it isn't a real
+      // number keeps a bad zoom read from ever reaching setView().
+      const currentZoom = map.getZoom();
+      const zoom = Number.isFinite(currentZoom) ? Math.max(currentZoom, DEFAULT_ZOOM) : DEFAULT_ZOOM;
+      map.setView(latlng, zoom);
+      if (import.meta.env.DEV) {
+        console.debug("[AiChatMap] auto-centered on first GPS fix", { latlng, zoom });
+      }
     }
-  }, [myLocation]);
+  }, [myLocation, mapReady]);
 
   // Throttled "nearby routes" recompute.
   useEffect(() => {
@@ -221,7 +304,7 @@ export default function AiChatMap() {
       }).addTo(map);
       nearbyLayersRef.current[code] = layer;
     });
-  }, [nearby, selectedNearbyCode, theme]);
+  }, [nearby, selectedNearbyCode, theme, mapReady]);
 
   // Destination marker, type-aware icon.
   useEffect(() => {
@@ -232,6 +315,10 @@ export default function AiChatMap() {
       destMarkerRef.current = null;
     }
     if (!dest) return;
+    if (!Number.isFinite(dest.lat) || !Number.isFinite(dest.lon)) {
+      console.error("[AiChatMap] destination stop has invalid coordinates", dest);
+      return;
+    }
     const iconClass = TYPE_ICON[dest.type] || "ti-map-pin";
     const icon = L.divIcon({
       className: "ai-chat-map-dest-icon-wrapper",
@@ -240,7 +327,7 @@ export default function AiChatMap() {
       iconAnchor: [15, 32],
     });
     destMarkerRef.current = L.marker([dest.lat, dest.lon], { icon }).addTo(map).bindPopup(dest.name);
-  }, [dest]);
+  }, [dest, mapReady]);
 
   // Recompute the recommended trip (throttled) whenever the destination or
   // the rider's position meaningfully changes.
@@ -293,6 +380,15 @@ export default function AiChatMap() {
     setTrip(best);
     setGeometry(assembleTripGeometry(best, myLocation, dest));
     tripOkRef.current = true;
+    if (import.meta.env.DEV) {
+      console.debug("[AiChatMap] trip computed", {
+        from: { id: origin.id, lat: myLocation.lat, lon: myLocation.lon },
+        to: { id: dest.id, lat: dest.lat, lon: dest.lon },
+        fare: best.fare,
+        duration: best.duration,
+        transfers: best.transfers,
+      });
+    }
   }, [dest, myLocation]);
 
   // Draw the recommended route's colored segments + transfer markers.
@@ -305,9 +401,16 @@ export default function AiChatMap() {
     transferMarkersRef.current = [];
     if (!geometry) return;
 
+    const isFiniteLatLng = ([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon);
+
     geometry.segments.forEach((segment) => {
+      const latlngs = segment.latlngs.filter(isFiniteLatLng);
+      if (latlngs.length < 2) {
+        console.error("[AiChatMap] dropped a route segment with invalid coordinates", segment);
+        return;
+      }
       const isWalk = segment.kind === "walk";
-      const layer = L.polyline(segment.latlngs, {
+      const layer = L.polyline(latlngs, {
         color: segmentColor(segment),
         weight: isWalk ? 4 : 5,
         opacity: 0.9,
@@ -318,6 +421,7 @@ export default function AiChatMap() {
     });
 
     geometry.transferPoints.forEach((stop) => {
+      if (!Number.isFinite(stop.lat) || !Number.isFinite(stop.lon)) return;
       const icon = L.divIcon({
         className: "ai-chat-map-transfer-icon-wrapper",
         html: '<div class="ai-chat-map-transfer-dot"></div>',
@@ -327,9 +431,14 @@ export default function AiChatMap() {
       transferMarkersRef.current.push(L.marker([stop.lat, stop.lon], { icon, interactive: false }).addTo(map));
     });
 
-    const allPoints = geometry.segments.flatMap((s) => s.latlngs);
-    if (allPoints.length) map.fitBounds(allPoints, { padding: [28, 28], maxZoom: 16 });
-  }, [geometry, theme]);
+    const allPoints = geometry.segments.flatMap((s) => s.latlngs).filter(isFiniteLatLng);
+    if (allPoints.length) {
+      map.fitBounds(allPoints, { padding: [28, 28], maxZoom: 16 });
+      if (import.meta.env.DEV) {
+        console.debug("[AiChatMap] fit map to route bounds", { points: allPoints.length });
+      }
+    }
+  }, [geometry, theme, mapReady]);
 
   function recenter() {
     if (myLocation) {
@@ -383,9 +492,22 @@ export default function AiChatMap() {
       <div className="ai-chat-map-canvas-wrap">
         <div ref={mapContainerRef} className="ai-chat-map-canvas" />
 
+        {!tilesLoaded && (
+          <div className="ai-chat-map-tile-skeleton" aria-hidden="true">
+            <i className="ti ti-map-2" />
+          </div>
+        )}
+
         <button type="button" className="ai-chat-map-locate-btn" onClick={recenter} title="My Location" aria-label="Center map on my location">
           <i className={`ti ti-current-location ${locStatus === "locating" ? "ai-chat-map-locate-spin" : ""}`} />
         </button>
+
+        {locStatus === "locating" && !myLocation && (
+          <div className="ai-chat-map-status-row ai-chat-map-status-row-floating">
+            <i className="ti ti-locate ai-chat-map-locate-spin" />
+            <span>Finding your location…</span>
+          </div>
+        )}
 
         {(locStatus === "denied" || locStatus === "unsupported") && (
           <div className="ai-chat-map-status-row ai-chat-map-status-row-floating">
@@ -420,7 +542,9 @@ export default function AiChatMap() {
 
         {!dest && nearby.routes.length === 0 && nearby.fallbackStops.length > 0 && (
           <div className="ai-chat-map-overlay ai-chat-map-overlay-top">
-            <p className="ai-chat-map-overlay-label">No routes within 1.5km — nearest stops</p>
+            <p className="ai-chat-map-overlay-message">
+              No routes found within 1.5 km. Here are the nearest available locations:
+            </p>
             <div className="ai-chat-map-chip-row">
               {nearby.fallbackStops.map(({ stop, distanceKm }) => (
                 <button key={stop.id} type="button" className="ai-chat-map-chip" onClick={() => tapDestination(stop)}>

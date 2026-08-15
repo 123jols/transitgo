@@ -22,6 +22,12 @@ export function walkingMinutes(km) {
   return Math.max(1, Math.round((km / WALKING_SPEED_KMH) * 60));
 }
 
+// "250m" below 1km, "1.3km" at/above it — matches how riders actually
+// think about short walking distances instead of always showing decimal km.
+export function formatDistance(km) {
+  return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`;
+}
+
 // Turns a GPS fix into a human-readable address via Nominatim's public
 // reverse-geocoding endpoint (the same OSM service MapExplorer already uses
 // for its own pins). Throws on network failure or an empty result so
