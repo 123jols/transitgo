@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { addRoute, findRoutes, getPopularRoutes, getStops, searchStops } from "../api/transit";
-import { haversineDistanceKm } from "../utils/geo";
+import { haversineDistanceKm, reverseGeocode, shortenAddress } from "../utils/geo";
 import RouteDetailsPage from "./RouteDetailsPage";
 import WeatherTip from "../components/WeatherTip";
 import ThemeToggle from "../components/ThemeToggle";
@@ -17,6 +17,11 @@ import ProfilePage from "./ProfilePage";
 // Cebu — otherwise a GPS fix from way outside our coverage area (or a bad
 // fix) would silently pin the wrong origin.
 const MAX_AUTO_LOCATE_KM = 20;
+
+// Minimum movement (km) between GPS fixes before we bother re-hitting the
+// reverse-geocoding API — avoids hammering Nominatim (and rewriting the
+// field) on every watchPosition tick while the rider is standing still.
+const MIN_REGEOCODE_MOVE_KM = 0.05; // ~50m
 
 // Glassmorphic dropdown component for stop suggestions
 function StopDropdown({ suggestions, onSelect, open }) {
@@ -74,8 +79,23 @@ export default function HomePage() {
   const [sheetSnap, setSheetSnap] = useState("half");
   const [navTab, setNavTab] = useState("home");
   const [locStatus, setLocStatus] = useState("idle"); // idle | locating | ok | denied
+  const [locError, setLocError] = useState("");
   const searchTimeoutRef = useRef(null);
   const fromRef = useRef(null);
+  // True while the "From" field should keep tracking live GPS fixes; flipped
+  // off the moment the rider takes explicit control of it (typing, picking a
+  // suggestion, swapping, opening a saved trip, etc.) so GPS updates stop
+  // clobbering their choice. Separate from `fromRef`, which only tells us
+  // whether a value is present — that alone can't distinguish "the rider
+  // chose this" from "GPS auto-filled this and should keep refreshing it".
+  const autoLocateRef = useRef(true);
+  // Last coordinates we actually reverse-geocoded, so a stationary rider's
+  // watchPosition updates (which can fire every few seconds) don't re-hit
+  // the Nominatim API for a fix that hasn't meaningfully moved.
+  const lastGeocodedFixRef = useRef(null);
+  // Bumped on every GPS-driven locate so a slow, older reverse-geocode
+  // response can't overwrite the field after a newer fix already resolved.
+  const locateRequestIdRef = useRef(0);
 
   const popularRoutes = getPopularRoutes();
   const stops = getStops();
@@ -177,6 +197,7 @@ export default function HomePage() {
   };
 
   const openSavedTrip = (trip) => {
+    autoLocateRef.current = false;
     setFrom(trip.from);
     setTo(trip.to);
     setRouteDetails(trip.route);
@@ -289,6 +310,7 @@ export default function HomePage() {
   };
 
   const handleFromChange = (e) => {
+    autoLocateRef.current = false;
     const value = e.target.value;
     setFromQuery(value);
     setFrom(null);
@@ -303,13 +325,17 @@ export default function HomePage() {
   };
 
   const selectFrom = (stop) => {
+    autoLocateRef.current = false;
     setFrom(stop);
     setFromQuery(stop.name);
     setFromSuggestions([]);
   };
 
   // The known stop nearest a given GPS fix, or null if none are within
-  // MAX_AUTO_LOCATE_KM.
+  // MAX_AUTO_LOCATE_KM. Routing only works between stops in the verified
+  // graph (data/db.js), so search still has to anchor on one of these even
+  // though the field now *displays* the real detected address, not this
+  // stop's name — see buildCurrentLocationStop below.
   const nearestStopTo = (lat, lon) => {
     const nearest = stops
       .map((stop) => ({ stop, distanceKm: haversineDistanceKm({ lat, lon }, stop) }))
@@ -317,18 +343,70 @@ export default function HomePage() {
     return nearest && nearest.distanceKm <= MAX_AUTO_LOCATE_KM ? nearest.stop : null;
   };
 
-  // Resolves to the known stop nearest the device's current GPS fix, or
-  // null if location is unavailable/denied/too far.
-  const locateNearestStop = () =>
+  // Turns a raw geolocation PositionError into a message that actually
+  // tells the rider what to do, instead of every failure mode collapsing
+  // into the same silent "denied" state.
+  const describeGeoError = (err) => {
+    if (!err || typeof err.code !== "number") return "Couldn't determine your location.";
+    switch (err.code) {
+      case err.PERMISSION_DENIED:
+        return "Location access is off. Enable it for this site in your browser/device settings.";
+      case err.POSITION_UNAVAILABLE:
+        return "Couldn't get a GPS fix. Make sure location services are turned on.";
+      case err.TIMEOUT:
+        return "Getting your location took too long. Check your signal and try again.";
+      default:
+        return "Couldn't determine your location.";
+    }
+  };
+
+  // Resolves a raw GPS fix into a "From"-ready stop: the nearest known stop
+  // (still needed so trip search runs against the verified route graph),
+  // but labeled with the real reverse-geocoded address and positioned at
+  // the *actual* detected coordinates rather than the stop's static ones.
+  // Root cause of the old "From always says Talamban" bug: 7 of our 8 known
+  // stops sit in one small downtown cluster and Talamban alone stands in
+  // for the entire rest of Metro Cebu, so nearly any real fix outside that
+  // cluster resolved to Talamban's *stop name* — which was then shown
+  // as-is, as if it were the rider's actual address. Reverse geocoding here
+  // replaces that static name with the real address, so the field says
+  // where the rider actually is even though routing still anchors on
+  // Talamban as the nearest graph node when that's genuinely the case.
+  const buildCurrentLocationStop = async (lat, lon) => {
+    const stop = nearestStopTo(lat, lon);
+    if (!stop) {
+      setLocError("You're outside the area TransitGo currently covers.");
+      return null;
+    }
+    let label = stop.name;
+    try {
+      label = shortenAddress(await reverseGeocode(lat, lon));
+    } catch {
+      // Best-effort only — a network hiccup or Nominatim being unavailable
+      // shouldn't block auto-fill, just fall back to the known stop's name
+      // instead of leaving the field blank.
+    }
+    setLocError("");
+    return { ...stop, name: label, lat, lon };
+  };
+
+  // One-shot locate: gets a fresh high-accuracy GPS fix and resolves it to
+  // a "From"-ready stop, or null if location is unavailable/denied/too far
+  // (in which case locError explains why).
+  const locateCurrentLocation = () =>
     new Promise((resolve) => {
       if (!navigator.geolocation) {
+        setLocError("Location isn't supported on this device/browser.");
         resolve(null);
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        (pos) => resolve(nearestStopTo(pos.coords.latitude, pos.coords.longitude)),
-        () => resolve(null),
-        { timeout: 8000 }
+        async (pos) => resolve(await buildCurrentLocationStop(pos.coords.latitude, pos.coords.longitude)),
+        (err) => {
+          setLocError(describeGeoError(err));
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     });
 
@@ -336,12 +414,27 @@ export default function HomePage() {
   // every fix here, so a location grant made via its "Enable Location" or
   // "My Location" controls still fills in this page's own "Your location"
   // field — even if this page's own initial locate attempt above had
-  // already failed/been denied and won't retry by itself.
-  const applyGpsFix = (lat, lon) => {
-    if (fromRef.current) return;
-    const stop = nearestStopTo(lat, lon);
+  // already failed/been denied and won't retry by itself. Because this
+  // fires on every watchPosition update, it's also what keeps "From" in
+  // sync as the rider actually moves — as long as autoLocateRef is still
+  // true, i.e. they haven't since taken manual control of the field.
+  const applyGpsFix = async (lat, lon) => {
+    if (!autoLocateRef.current) return;
+
+    const last = lastGeocodedFixRef.current;
+    if (last && haversineDistanceKm(last, { lat, lon }) < MIN_REGEOCODE_MOVE_KM) return;
+
+    const requestId = ++locateRequestIdRef.current;
+    const stop = await buildCurrentLocationStop(lat, lon);
+    // A newer fix (or the rider taking manual control) may have landed
+    // while this reverse-geocode was in flight — don't let a stale response
+    // overwrite whatever's current now.
+    if (requestId !== locateRequestIdRef.current || !autoLocateRef.current) return;
+
+    lastGeocodedFixRef.current = { lat, lon };
     if (stop) {
-      selectFrom(stop);
+      setFrom(stop);
+      setFromQuery(stop.name);
       setLocStatus("ok");
     }
   };
@@ -352,7 +445,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setLocStatus("locating");
-    locateNearestStop().then((stop) => {
+    locateCurrentLocation().then((stop) => {
       // Don't clobber an origin the user already picked while we were
       // waiting on the GPS fix.
       if (fromRef.current) {
@@ -360,7 +453,9 @@ export default function HomePage() {
         return;
       }
       if (stop) {
-        selectFrom(stop);
+        lastGeocodedFixRef.current = { lat: stop.lat, lon: stop.lon };
+        setFrom(stop);
+        setFromQuery(stop.name);
         setLocStatus("ok");
       } else {
         setLocStatus("denied");
@@ -368,6 +463,25 @@ export default function HomePage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-attempts the GPS locate on demand (the "Try again" link shown next to
+  // a location error) — the browser only shows its native permission prompt
+  // once per origin, but a retry is still meaningful for a timeout, a
+  // temporarily unavailable fix, or the rider having just flipped location
+  // services back on in Settings.
+  const retryLocate = async () => {
+    autoLocateRef.current = true;
+    setLocStatus("locating");
+    const stop = await locateCurrentLocation();
+    if (stop) {
+      lastGeocodedFixRef.current = { lat: stop.lat, lon: stop.lon };
+      setFrom(stop);
+      setFromQuery(stop.name);
+      setLocStatus("ok");
+    } else {
+      setLocStatus("denied");
+    }
+  };
 
   const selectTo = (stop) => {
     setTo(stop);
@@ -377,6 +491,7 @@ export default function HomePage() {
 
   const swapStops = () => {
     if (!from && !to) return;
+    autoLocateRef.current = false;
     setFrom(to);
     setTo(from);
     setFromQuery(to ? to.name : "");
@@ -409,9 +524,15 @@ export default function HomePage() {
     setResults([]);
     setIsSearching(false);
     setActiveTab("search");
+    // Clearing isn't "I want something else" the way typing/picking/swapping
+    // is — there's no explicit alternative, so let GPS auto-fill "From"
+    // again on the next fix instead of leaving it permanently disabled.
+    autoLocateRef.current = true;
+    lastGeocodedFixRef.current = null;
   };
 
   const applyPopularRoute = (route) => {
+    autoLocateRef.current = false;
     setFrom(route.from);
     setTo(route.to);
     setFromQuery(route.from.name);
@@ -443,8 +564,10 @@ export default function HomePage() {
     if (!origin) {
       setActiveTab("search");
       setLocStatus("locating");
-      origin = await locateNearestStop();
+      origin = await locateCurrentLocation();
       if (origin) {
+        lastGeocodedFixRef.current = { lat: origin.lat, lon: origin.lon };
+        autoLocateRef.current = true;
         setFrom(origin);
         setFromQuery(origin.name);
         setLocStatus("ok");
@@ -678,6 +801,19 @@ export default function HomePage() {
           <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "6px 2px 0" }}>
             <i className="ti ti-map-pin" style={{ marginRight: 4 }}></i>
             Starting near {from.name} (your location)
+          </p>
+        )}
+        {locStatus === "denied" && (
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "6px 2px 0" }}>
+            <i className="ti ti-map-pin-off" style={{ marginRight: 4 }}></i>
+            {locError || "Couldn't detect your location."}{" "}
+            <button
+              type="button"
+              onClick={retryLocate}
+              style={{ background: "none", border: "none", padding: 0, color: "var(--accent-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            >
+              Try again
+            </button>
           </p>
         )}
 

@@ -6,7 +6,9 @@ const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
 // Standard Philippine LTFRB jeepney minimum-fare matrix: flat minimum fare
 // for the first few km, then a per-km increment beyond that. Not a
 // route-specific number — a public, well-known fare formula applied to the
-// real distance between the actual boarding/alighting stops.
+// real distance between the actual boarding/alighting stops. LTFRB-jeepney-
+// specific: would mis-price a `type: "bus"` leg if one's ever added to
+// jeepneyRoutes (none exist today — buses are shown as info badges only).
 const JEEPNEY_SPEED_KMH = 12; // conservative stop-and-go urban average
 const MIN_FARE = 13;
 const MIN_FARE_KM = 4;
@@ -138,6 +140,8 @@ function legsToRouteObject(legs) {
       kind: l.kind,
       code: l.kind === "ride" ? l.edge.route.code : null,
       direction: l.kind === "ride" ? l.edge.route.direction : null,
+      fromId: l.edge.fromId,
+      toId: l.edge.toId,
       fromName: stopById[l.edge.fromId].name,
       toName: stopById[l.edge.toId].name,
       fare: l.kind === "ride" ? l.edge.fare : 0,
@@ -169,4 +173,54 @@ export function findRoutesBetween(fromId, toId) {
   });
 
   return deduped.slice(0, MAX_RESULTS);
+}
+
+// The known stop nearest a GPS fix, or null if none are within maxKm.
+export function nearestStop(lat, lon, maxKm) {
+  const nearest = stops
+    .map((stop) => ({ stop, distanceKm: haversineDistanceKm({ lat, lon }, stop) }))
+    .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+  return nearest && nearest.distanceKm <= maxKm ? nearest.stop : null;
+}
+
+const NEARBY_ROUTE_RADIUS_KM = 1.5;
+
+// Jeepney routes actually boardable near a GPS fix — stops within radiusKm,
+// then the routes that call at any of them, deduped by code (each code has
+// a separate entry per direction; both share one physical line). Distinct
+// from nearestStop/MAX_AUTO_LOCATE_KM's ~20km "are we in Cebu at all" check:
+// this is a tight, walkable radius, so it stays genuinely selective instead
+// of just returning every route in the graph from anywhere in the metro.
+// Falls back to the 3 nearest stops regardless of radius (labeled with
+// their distance) so the caller never hits a hard empty state.
+export function findNearbyRoutes(lat, lon, radiusKm = NEARBY_ROUTE_RADIUS_KM) {
+  const withDistance = stops
+    .map((stop) => ({ stop, distanceKm: haversineDistanceKm({ lat, lon }, stop) }))
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+
+  const nearby = withDistance.filter((d) => d.distanceKm <= radiusKm);
+  const nearbyIds = new Set(nearby.map((d) => d.stop.id));
+
+  if (nearbyIds.size === 0) {
+    return {
+      routes: [],
+      fallbackStops: withDistance.slice(0, 3),
+    };
+  }
+
+  const distanceByStopId = Object.fromEntries(withDistance.map((d) => [d.stop.id, d.distanceKm]));
+  const seenCodes = new Set();
+  const routes = [];
+
+  jeepneyRoutes.forEach((route) => {
+    if (seenCodes.has(route.code)) return;
+    const stopIdsHere = route.stopIds.filter((id) => nearbyIds.has(id));
+    if (!stopIdsHere.length) return;
+    seenCodes.add(route.code);
+    const closestStopKm = Math.min(...stopIdsHere.map((id) => distanceByStopId[id]));
+    routes.push({ code: route.code, route, distanceKm: closestStopKm });
+  });
+
+  routes.sort((a, b) => a.distanceKm - b.distanceKm);
+  return { routes, fallbackStops: [] };
 }

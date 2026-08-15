@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import AiChatMap from "./AiChatMap";
 
 const SYSTEM_PROMPT = `You are TransitGo AI, a helpful transit assistant for Metro Cebu, Philippines.
 You help commuters find the best jeepney, bus, and taxi routes.
@@ -192,12 +193,7 @@ export default function AiChat() {
           </div>
 
           {showMap ? (
-            <iframe
-              title="Cebu transit map"
-              src="https://www.google.com/maps?q=Cebu+City,+Philippines&output=embed"
-              style={{ flex: 1, border: "none" }}
-              loading="lazy"
-            />
+            <AiChatMap />
           ) : (
             <>
           {/* Messages */}

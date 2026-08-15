@@ -67,6 +67,23 @@ export default function TerminalsPage({ stops, onViewRoutes }) {
               ))}
             </div>
 
+            {terminal.hours && (
+              <div className={`terminal-card-hours${terminal.longRoute ? " terminal-card-hours-long" : ""}`}>
+                <div className="terminal-card-hours-row">
+                  <i className="ti ti-clock"></i>
+                  <span>
+                    First ride <strong>{terminal.hours.first}</strong> · Last ride{" "}
+                    <strong>{terminal.hours.last}</strong>
+                    {!terminal.hours.sourced && <em className="terminal-card-hours-unconfirmed"> (est.)</em>}
+                  </span>
+                  {terminal.longRoute && (
+                    <span className="terminal-card-hours-tag">Long route — plan ahead</span>
+                  )}
+                </div>
+                {terminal.hours.note && <p className="terminal-card-hours-note">{terminal.hours.note}</p>}
+              </div>
+            )}
+
             <button
               type="button"
               className="attraction-route-button"

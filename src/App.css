@@ -30,6 +30,17 @@
   --accent-teal: #1f9e8f;
   --accent-green: #0e9f40;
 
+  /* Route-leg identity colors (assistant map) — validated for CVD-safety
+     and contrast against this app's actual surfaces; walk is deliberately
+     low-chroma "neutral gray" and MUST be paired with a dashed line
+     wherever it's used, not solid, per that validation. */
+  --accent-bus: #2a78d6;
+  --accent-bus-rgb: 42, 120, 214;
+  --accent-walk: #6b7280;
+  --accent-walk-rgb: 107, 114, 128;
+  --accent-transfer: #d97706;
+  --accent-transfer-rgb: 217, 119, 6;
+
   --border-rgb: 14, 90, 50;
   --shadow-rgb: 14, 60, 36;
 
@@ -64,6 +75,13 @@
   --accent-primary-rgb: 25, 230, 90;
   --accent-teal: #2bc4b0;
   --accent-green: #19e65a;
+
+  --accent-bus: #5b9bf0;
+  --accent-bus-rgb: 91, 155, 240;
+  --accent-walk: #b8bfc7;
+  --accent-walk-rgb: 184, 191, 199;
+  --accent-transfer: #ffb84d;
+  --accent-transfer-rgb: 255, 184, 77;
 
   --border-rgb: 255, 255, 255;
   --shadow-rgb: 0, 0, 0;
@@ -1035,6 +1053,54 @@ button:active {
   font-weight: 500;
 }
 
+.terminal-card-hours {
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-surface-alt);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.terminal-card-hours-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.terminal-card-hours strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.terminal-card-hours-unconfirmed {
+  color: var(--text-tertiary, var(--text-secondary));
+  font-style: italic;
+}
+
+.terminal-card-hours-long {
+  background: rgba(var(--accent-primary-rgb), 0.10);
+  border: 1px solid rgba(var(--accent-primary-rgb), 0.25);
+}
+
+.terminal-card-hours-tag {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--accent-primary);
+  color: var(--bg-surface);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.terminal-card-hours-note {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
 /* Results tab */
 .results-tab {
   display: grid;
@@ -1973,6 +2039,202 @@ button:active {
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* TransitGo Assistant mini map (AiChatMap) — scoped smaller than the
+   fullscreen MapExplorer's own .my-location-button/.my-location-banner,
+   which don't fit this ~300px popup panel. The blue dot itself still reuses
+   .my-location-icon-wrapper/.my-location-dot/.my-location-pulse above. */
+.ai-chat-map-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 140px;
+}
+
+.ai-chat-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.ai-chat-map-locate-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 150;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  color: var(--accent-primary);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.22);
+}
+
+.ai-chat-map-locate-spin {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+.ai-chat-map-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-surface-alt);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.10);
+}
+
+.ai-chat-map-status-row i {
+  font-size: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ai-chat-map-status-row button {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-primary-deep);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+:root[data-theme="dark"] .ai-chat-map-status-row button {
+  color: var(--accent-primary);
+}
+
+.ai-chat-map-status-row-floating {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 52px;
+  z-index: 140;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.2);
+}
+
+.ai-chat-map-overlay {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  z-index: 130;
+}
+
+.ai-chat-map-overlay-top {
+  top: 10px;
+}
+
+.ai-chat-map-overlay-bottom {
+  bottom: 10px;
+}
+
+.ai-chat-map-overlay-label {
+  display: inline-block;
+  margin: 0 0 5px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  box-shadow: 0 2px 8px rgba(var(--shadow-rgb), 0.15);
+}
+
+.ai-chat-map-chip-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.ai-chat-map-chip {
+  flex-shrink: 0;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--border-rgb), 0.14);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(var(--shadow-rgb), 0.15);
+}
+
+.ai-chat-map-chip-active {
+  background: var(--accent-primary);
+  color: #04170a;
+  border-color: transparent;
+}
+
+.ai-chat-map-nearby-detail {
+  display: inline-block;
+  max-width: 100%;
+  margin: 5px 0 0;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(var(--shadow-rgb), 0.15);
+}
+
+.ai-chat-map-dest-icon-wrapper {
+  background: transparent;
+  border: none;
+}
+
+.ai-chat-map-dest-pin {
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--accent-primary-deep);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-chat-map-dest-pin i {
+  transform: rotate(45deg);
+  color: #fff;
+  font-size: 13px;
+}
+
+.ai-chat-map-transfer-icon-wrapper {
+  background: transparent;
+  border: none;
+}
+
+.ai-chat-map-transfer-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-transfer);
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes aiChatRouteLineFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ai-chat-map-route-line {
+  animation: aiChatRouteLineFadeIn 320ms ease forwards;
 }
 
 /* Media queries */
