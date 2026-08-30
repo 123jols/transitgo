@@ -1,8 +1,12 @@
 import { useState } from "react";
 import RouteMap from "../components/RouteMap";
 import ThemeToggle from "../components/ThemeToggle";
+import { stops } from "../data/db";
 import { haversineDistanceKm } from "../utils/geo";
 import { openGrabRide } from "../utils/grabLink";
+import { openWalkingDirections } from "../utils/navigation";
+
+const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
 
 const VEHICLE_ICON = {
   jeepney: "ti-bus",
@@ -33,6 +37,16 @@ export default function RouteDetailsPage({
     openGrabRide(from, to);
     setGrabCopied(true);
     setTimeout(() => setGrabCopied(false), 3000);
+  };
+
+  // Walking directions to the first physical stop the rider needs to reach
+  // — the first leg's boarding point if one exists, otherwise straight to
+  // the destination (a walk-only trip, or a fallback single-leg route with
+  // no coordinate-bearing legs array).
+  const handleStartNavigation = () => {
+    const firstLeg = route.legs && route.legs.length > 0 ? route.legs[0] : null;
+    const target = (firstLeg && stopById[firstLeg.toId]) || to;
+    openWalkingDirections(target.lat, target.lon);
   };
   const aiInsight = discountRate > 0
     ? `Smart pick for ${userLabel} riders: this route maximizes your savings with excellent timing and minimal transfers.`
@@ -161,6 +175,15 @@ export default function RouteDetailsPage({
             <p className="detail-value">{userLabel}</p>
           </div>
         </div>
+
+        <button
+          type="button"
+          className="start-navigation-button"
+          onClick={handleStartNavigation}
+        >
+          <i className="ti ti-navigation"></i>
+          Start Navigation
+        </button>
 
         {/* Extra info cards */}
         <div style={{ display: "grid", gap: "12px" }}>

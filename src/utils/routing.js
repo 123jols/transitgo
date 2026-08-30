@@ -10,10 +10,17 @@ const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
 // real distance between the actual boarding/alighting stops. LTFRB-jeepney-
 // specific: would mis-price a `type: "bus"` leg if one's ever added to
 // jeepneyRoutes (none exist today — buses are shown as info badges only).
+// Rate effective March 19, 2026 (LTFRB nationwide traditional-jeepney fare
+// hike: P13→P14 first 4km, P1.80→P2.00/km after — still in effect as of
+// this writing; a since-filed Piston petition to raise fares further from
+// this same P14 base confirms it held rather than being rolled back).
+// Sources: philstar.com/the-freeman/cebu-news/2026/03/18/2515167,
+// rappler.com/newsbreak/iq/fare-increase-jeepneys-buses-ride-hailing-philippines-march-19-2026,
+// philstar.com/headlines/2026/04/21/2522489 (Piston P10-more petition).
 const JEEPNEY_SPEED_KMH = 12; // conservative stop-and-go urban average
-const MIN_FARE = 13;
+const MIN_FARE = 14;
 const MIN_FARE_KM = 4;
-const PER_KM_RATE = 1.8;
+const PER_KM_RATE = 2;
 
 function fareForDistance(km) {
   if (km <= MIN_FARE_KM) return MIN_FARE;

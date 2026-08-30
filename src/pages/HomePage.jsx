@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addRoute, findRoutes, getPopularRoutes, getStops, searchStops } from "../api/transit";
+import { addRoute, findRoutes, getPopularRoutes, getStops, searchDestinations, searchStops } from "../api/transit";
 import { haversineDistanceKm, reverseGeocode, shortenAddress } from "../utils/geo";
 import RouteDetailsPage from "./RouteDetailsPage";
 import WeatherTip from "../components/WeatherTip";
@@ -29,17 +29,17 @@ function StopDropdown({ suggestions, onSelect, open }) {
   if (!open || !suggestions.length) return null;
   return (
     <div className="stop-dropdown">
-      {suggestions.map((stop) => (
+      {suggestions.map((item) => (
         <button
-          key={stop.id}
+          key={item.id}
           type="button"
           className="stop-dropdown-item"
-          onClick={() => onSelect(stop)}
+          onClick={() => onSelect(item)}
         >
           <i className="ti ti-map-pin" style={{ color: "#1976d2" }}></i>
           <div className="stop-dropdown-content">
-            <p className="stop-name">{stop.name}</p>
-            <p className="stop-type">Transit stop</p>
+            <p className="stop-name">{item.name ?? item.label}</p>
+            <p className="stop-type">{item.subtitle || "Transit stop"}</p>
           </div>
         </button>
       ))}
@@ -322,7 +322,16 @@ export default function HomePage() {
     const value = e.target.value;
     setToQuery(value);
     setTo(null);
-    setToSuggestions(value ? searchStops(value) : []);
+    setToSuggestions(value ? searchDestinations(value) : []);
+  };
+
+  // A destination search hit (stop, terminal, or attraction — see
+  // api/transit.js's searchDestinations) resolves to a real routable stop,
+  // relabeled with whatever the rider actually searched for (e.g. "Kawasan
+  // Falls" instead of its jump-off stop's own name "Carbon Market") so the
+  // UI reflects their intent while routing still runs on the real node.
+  const selectDestination = (result) => {
+    viewRoutesTo({ ...result.stop, name: result.label });
   };
 
   const selectFrom = (stop) => {
@@ -759,7 +768,7 @@ export default function HomePage() {
               />
               <StopDropdown
                 suggestions={toSuggestions}
-                onSelect={viewRoutesTo}
+                onSelect={selectDestination}
                 open={toSuggestions.length > 0}
               />
             </div>

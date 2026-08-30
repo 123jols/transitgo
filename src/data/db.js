@@ -9,6 +9,7 @@ export const stops = [
   { id: "fuente", name: "Fuente Osmeña Circle", type: "landmark", lat: 10.3103, lon: 123.8925 },
   { id: "carbon", name: "Carbon Market", type: "landmark", lat: 10.2939, lon: 123.8998 },
   { id: "talamban", name: "Talamban", type: "district", lat: 10.3654, lon: 123.8917 },
+  { id: "liloan", name: "Liloan Public Market", type: "landmark", lat: 10.42195, lon: 123.99573 },
 ];
 
 // Verified traditional Cebu jeepney routes. Each entry is ONE physical route
@@ -101,6 +102,26 @@ export const jeepneyRoutes = [
     stopIds: ["colon", "ayala", "talamban"],
     verified: true,
     source: "https://cebudailynews.inquirer.net/728043/lost-in-cebu-heres-a-guide-to-cebu-citys-jeepney-route-codes ; https://ph.commutetour.com/ph/terminal/ayala-center-cebu/",
+    lastUpdated: "2026",
+  },
+  {
+    id: "25-liloan-sm",
+    code: "25",
+    type: "jeepney",
+    direction: "Liloan → Consolacion → Mandaue → North Bus Terminal → SM City Cebu",
+    stopIds: ["liloan", "sm-city"],
+    verified: true,
+    source: "https://cebujeepneys.weebly.com/25.html ; https://sugbo.ph/2024/cebu-jeepney-routes/ (Parkmall Terminal entry in data/terminals.js also lists \"25 (Liloan)\")",
+    lastUpdated: "2026",
+  },
+  {
+    id: "25-sm-liloan",
+    code: "25",
+    type: "jeepney",
+    direction: "SM City Cebu → North Bus Terminal → Mandaue → Consolacion → Liloan",
+    stopIds: ["sm-city", "liloan"],
+    verified: true,
+    source: "https://cebujeepneys.weebly.com/25.html ; https://sugbo.ph/2024/cebu-jeepney-routes/ (Parkmall Terminal entry in data/terminals.js also lists \"25 (Liloan)\")",
     lastUpdated: "2026",
   },
 ];

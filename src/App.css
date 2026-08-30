@@ -1709,6 +1709,33 @@ button:active {
   transform: translateY(-1px);
 }
 
+.start-navigation-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--accent-primary);
+  color: #04170a;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), background 160ms ease;
+}
+
+.start-navigation-button:hover {
+  background: var(--accent-primary-deep);
+  transform: translateY(-1px);
+}
+
+:root[data-theme="dark"] .start-navigation-button:hover {
+  background: var(--accent-primary);
+  filter: brightness(1.1);
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
