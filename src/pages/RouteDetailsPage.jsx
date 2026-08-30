@@ -1,6 +1,8 @@
+import { useState } from "react";
 import RouteMap from "../components/RouteMap";
 import ThemeToggle from "../components/ThemeToggle";
 import { haversineDistanceKm } from "../utils/geo";
+import { openGrabRide } from "../utils/grabLink";
 
 const VEHICLE_ICON = {
   jeepney: "ti-bus",
@@ -26,6 +28,12 @@ export default function RouteDetailsPage({
     ? haversineDistanceKm(from, to).toFixed(1)
     : null;
   const vehicleIcon = VEHICLE_ICON[route.type] || "ti-bus";
+  const [grabCopied, setGrabCopied] = useState(false);
+  const handleGrabClick = () => {
+    openGrabRide(from, to);
+    setGrabCopied(true);
+    setTimeout(() => setGrabCopied(false), 3000);
+  };
   const aiInsight = discountRate > 0
     ? `Smart pick for ${userLabel} riders: this route maximizes your savings with excellent timing and minimal transfers.`
     : route.transfers === 0
@@ -56,15 +64,27 @@ export default function RouteDetailsPage({
         </div>
 
         {/* Save to Trips */}
-        <button
-          type="button"
-          className={`save-trip-button ${isSaved ? "saved" : ""}`}
-          onClick={onSaveTrip}
-          disabled={isSaved}
-        >
-          <i className={`ti ${isSaved ? "ti-bookmark" : "ti-bookmark-plus"}`}></i>
-          {isSaved ? "Saved to Trips" : "Add to Trips"}
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+          <button
+            type="button"
+            className={`save-trip-button ${isSaved ? "saved" : ""}`}
+            onClick={onSaveTrip}
+            disabled={isSaved}
+          >
+            <i className={`ti ${isSaved ? "ti-bookmark" : "ti-bookmark-plus"}`}></i>
+            {isSaved ? "Saved to Trips" : "Add to Trips"}
+          </button>
+
+          <button type="button" className="grab-ride-button" onClick={handleGrabClick}>
+            <i className="ti ti-car"></i>
+            Ride with Grab instead
+          </button>
+        </div>
+        {grabCopied && (
+          <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: -6 }}>
+            Opening Grab… pickup/drop-off addresses copied in case they don't carry over.
+          </p>
+        )}
 
         {/* Route map */}
         <RouteMap from={from} to={to} />
