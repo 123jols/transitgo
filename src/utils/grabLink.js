@@ -1,33 +1,38 @@
 // Opens the Grab app to a booking screen pre-filled with pickup/dropoff, for
-// riders who'd rather skip the commute. Grab doesn't publish an official
-// third-party deep-link spec for this (only "grabconnect2" for partner
-// sign-in, which needs a registered partner account), so pickUp/dropOff
-// params are best-effort — if Grab ignores them the app still opens to its
-// home screen. The clipboard copy is the reliable fallback either way.
-const GRAB_PH_WEB_FALLBACK = "https://www.grab.com/ph/transport/";
-const APP_OPEN_FALLBACK_DELAY_MS = 1500;
+// riders who'd rather skip the commute.
+//
+// Uses applink.grab.com — Grab's own real universal-link domain (confirmed
+// by "Get the Grab App" links on grab.com itself, e.g.
+// applink.grab.com/open?screenType=GRABFOOD&merchantIDs=...&sourceID=SMART_LINK
+// found live on their site). Being an https:// universal link, iOS/Android
+// hand it straight to the installed app at the OS level if Grab is
+// registered for that domain — no installed-app detection or manual
+// fallback timer needed, unlike a raw "grab://" custom scheme (which is
+// what this used before and which real-device testing showed silently
+// failing, always falling through to the web instead of opening the app).
+// If Grab isn't installed, the link just opens Grab's own web landing page.
+//
+// The screenType/pickUp*/dropOff* params below are a best-effort guess at
+// the transport equivalent of the confirmed GRABFOOD pattern — Grab hasn't
+// published a spec for this, so if the app ignores them it still opens to
+// its home screen rather than failing. The clipboard copy is the one part
+// of this guaranteed to be useful either way.
+const APPLINK_BASE = "https://applink.grab.com/open";
 
 export function openGrabRide(from, to) {
   const params = new URLSearchParams({
-    screenType: "BOOKING",
+    screenType: "TRANSPORT",
     pickUpLatitude: from.lat,
     pickUpLongitude: from.lon,
     pickUpAddress: from.name,
     dropOffLatitude: to.lat,
     dropOffLongitude: to.lon,
     dropOffAddress: to.name,
+    sourceID: "TRANSITGO",
   });
-  const deepLink = `grab://open?${params.toString()}`;
 
   const clipboardText = `Pickup: ${from.name}\nDrop-off: ${to.name}`;
   navigator.clipboard?.writeText(clipboardText).catch(() => {});
 
-  // If the deep link actually opens the app, the tab loses focus before the
-  // timer fires and this fallback never runs.
-  const fallbackTimer = setTimeout(() => {
-    window.location.href = GRAB_PH_WEB_FALLBACK;
-  }, APP_OPEN_FALLBACK_DELAY_MS);
-  window.addEventListener("blur", () => clearTimeout(fallbackTimer), { once: true });
-
-  window.location.href = deepLink;
+  window.location.href = `${APPLINK_BASE}?${params.toString()}`;
 }
