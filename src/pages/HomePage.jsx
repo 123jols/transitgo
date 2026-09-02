@@ -13,6 +13,10 @@ import BottomNav from "../components/BottomNav";
 import TripsPage from "./TripsPage";
 import TerminalsPage from "./TerminalsPage";
 import ProfilePage from "./ProfilePage";
+import GrabRideCard from "../components/GrabRideCard";
+import useGrabEstimate from "../hooks/useGrabEstimate";
+import useSavedTrips from "../hooks/useSavedTrips";
+import { RIDER_TYPES, getStoredRiderType, setStoredRiderType } from "../data/riderTypes";
 
 // Only auto-fill "From" with a detected stop if it's actually within Metro
 // Cebu — otherwise a GPS fix from way outside our coverage area (or a bad
@@ -52,14 +56,18 @@ export default function HomePage() {
   const [toQuery, setToQuery] = useState("");
   const [from, setFrom] = useState(null);
   const [to, setTo] = useState(null);
+  // Grab estimate runs independently of public-transit search — it must
+  // never block or delay the routes list, and it's fine for it to still be
+  // loading (or to fail) while public transit results are already shown.
+  const grabEstimate = useGrabEstimate(from, to);
   const [fromSuggestions, setFromSuggestions] = useState([]);
   const [toSuggestions, setToSuggestions] = useState([]);
   const [results, setResults] = useState([]);
-  const [userType, setUserType] = useState("regular");
+  const [userType, setUserType] = useState(getStoredRiderType);
   const [routeFilter, setRouteFilter] = useState("all");
   const [sortBy, setSortBy] = useState("cheapest");
   const [recentSearches, setRecentSearches] = useState([]);
-  const [savedTrips, setSavedTrips] = useState([]);
+  const { savedTrips, saveTripToTrips, removeSavedTrip } = useSavedTrips();
   const [routeDetails, setRouteDetails] = useState(null);
   const [activeTab, setActiveTab] = useState("search");
   const [isSearching, setIsSearching] = useState(false);
@@ -101,19 +109,15 @@ export default function HomePage() {
   const popularRoutes = getPopularRoutes();
   const stops = getStops();
 
-  const discounts = {
-    regular: 0,
-    student: 0.2,
-    pwd: 0.3,
-    tourist: 0.1,
-  };
+  const discounts = Object.fromEntries(RIDER_TYPES.map((t) => [t.id, t.discount]));
+  const userLabels = Object.fromEntries(RIDER_TYPES.map((t) => [t.id, t.label]));
 
-  const userLabels = {
-    regular: "Regular",
-    student: "Student",
-    pwd: "PWD",
-    tourist: "Tourist",
-  };
+  // Kept in sync with the Profile page's Rider Type setting (both read/write
+  // the same localStorage key) so a discount picked in one place applies in
+  // the other without needing to lift this state up or add a context.
+  useEffect(() => {
+    setStoredRiderType(userType);
+  }, [userType]);
 
   useEffect(() => {
     const storedHistory = window.localStorage.getItem("transitgo-recent-searches");
@@ -122,15 +126,6 @@ export default function HomePage() {
         setRecentSearches(JSON.parse(storedHistory));
       } catch (error) {
         console.warn("Invalid recent search history stored", error);
-      }
-    }
-
-    const storedTrips = window.localStorage.getItem("transitgo-saved-trips");
-    if (storedTrips) {
-      try {
-        setSavedTrips(JSON.parse(storedTrips));
-      } catch (error) {
-        console.warn("Invalid saved trips stored", error);
       }
     }
   }, []);
@@ -178,24 +173,6 @@ export default function HomePage() {
   };
 
   const getSearchLabel = (source, destination) => `${source.name} → ${destination.name}`;
-
-  const saveTripToTrips = (route, source, destination) => {
-    const id = `${route.id}-${source.id}-${destination.id}`;
-    setSavedTrips((prev) => {
-      if (prev.some((trip) => trip.id === id)) return prev;
-      const next = [{ id, route, from: source, to: destination, savedAt: new Date().toISOString() }, ...prev].slice(0, 20);
-      window.localStorage.setItem("transitgo-saved-trips", JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const removeSavedTrip = (id) => {
-    setSavedTrips((prev) => {
-      const next = prev.filter((trip) => trip.id !== id);
-      window.localStorage.setItem("transitgo-saved-trips", JSON.stringify(next));
-      return next;
-    });
-  };
 
   const openSavedTrip = (trip) => {
     autoLocateRef.current = false;
@@ -639,7 +616,6 @@ export default function HomePage() {
     if (!topPickMap.has(route.id)) topPickMap.set(route.id, { route, badges: [] });
     topPickMap.get(route.id).badges.push({ label, icon });
   });
-  const topPicks = [...topPickMap.values()];
 
   const currentDiscountText = userType === "regular" ? "No discount" : getDiscountLabel();
 
@@ -687,7 +663,7 @@ export default function HomePage() {
   if (navTab === "profile") {
     return (
       <>
-        <ProfilePage />
+        <ProfilePage onNavigate={setNavTab} />
         <BottomNav active={navTab} onChange={setNavTab} />
       </>
     );
@@ -905,35 +881,6 @@ export default function HomePage() {
 
       {activeTab === "results" && (
         <div className={`tab-content results-tab ${resultsAnimated ? "animated" : ""}`}>
-          {/* Top picks */}
-          {topPicks.length > 0 && !isSearching && (
-            <div className="top-picks-row">
-              {topPicks.map(({ route, badges }) => (
-                <button
-                  key={route.id}
-                  type="button"
-                  className="top-pick-card"
-                  onClick={() => openRouteDetails(route)}
-                >
-                  <div className="top-pick-badges">
-                    {badges.map((badge) => (
-                      <span key={badge.label} className="top-pick-badge">
-                        <i className={`ti ${badge.icon}`}></i>
-                        {badge.label}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="top-pick-label">{route.label}</p>
-                  <div className="top-pick-meta">
-                    <span>₱{getDiscountedFare(route.fare)}</span>
-                    <span>{route.duration} min</span>
-                    <span>{route.transfers} transfer{route.transfers === 1 ? "" : "s"}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* AI recommendation */}
           {aiRecommendedRoute && !isSearching && (
             <div className="ai-card">
@@ -1010,7 +957,14 @@ export default function HomePage() {
           ) : (
             <div className="routes-list">
               <p className="result-count">{routeCount} route{routeCount === 1 ? "" : "s"} found</p>
-              {sortedResults.map((route) => (
+              {sortedResults.map((route) => {
+                const pick = topPickMap.get(route.id);
+                const isAiPick = aiRecommendedRoute?.id === route.id;
+                const badges = [
+                  ...(pick ? pick.badges : []),
+                  ...(isAiPick ? [{ label: "AI Pick", icon: "ti-sparkles" }] : []),
+                ];
+                return (
                 <div key={route.id} className="route-result-card">
                   <div className="route-result-header">
                     <div>
@@ -1019,10 +973,17 @@ export default function HomePage() {
                         {route.type} • {route.transfers} transfer{route.transfers === 1 ? "" : "s"}
                       </p>
                     </div>
-                    {aiRecommendedRoute?.id === route.id && (
-                      <span className="route-badge-ai">AI top pick</span>
-                    )}
                   </div>
+                  {badges.length > 0 && (
+                    <div className="top-pick-badges">
+                      {badges.map((badge) => (
+                        <span key={badge.label} className="top-pick-badge">
+                          <i className={`ti ${badge.icon}`}></i>
+                          {badge.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="route-result-footer">
                     <div className="fare-block">
                       <span className="fare-label">Fare</span>
@@ -1041,8 +1002,36 @@ export default function HomePage() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
+          )}
+
+          {/* Grab — an additional option, never the default. Loads
+              independently of the public-transit results above. */}
+          {hasSelection && !isSearching && (
+            <>
+              {grabEstimate.status === "loading" && (
+                <div className="grab-status-row">
+                  <i className="ti ti-car"></i>
+                  Grab · Getting fare estimate…
+                </div>
+              )}
+              {grabEstimate.status === "unavailable" && (
+                <div className="grab-status-row">
+                  <i className="ti ti-car-off"></i>
+                  Grab estimates are temporarily unavailable.
+                </div>
+              )}
+              {grabEstimate.status === "ok" && (
+                <div className="grab-section">
+                  <p className="section-label">More ways to go</p>
+                  {grabEstimate.services.map((service) => (
+                    <GrabRideCard key={service.serviceID} service={service} from={from} to={to} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
