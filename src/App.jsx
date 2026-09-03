@@ -8,7 +8,6 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { loadLiveTransitData } from "./lib/transitSync";
 import AdminRoot from "./admin/AdminRoot";
 
-const GUEST_MODE_KEY = "transitgo-guest-mode";
 const isAdminPath = window.location.pathname.startsWith("/admin");
 
 function LoadingScreen() {
@@ -30,10 +29,7 @@ function LoadingScreen() {
 // already falls back to device-only storage for trips/expenses when signed
 // out, so guest mode needs no extra feature-gating beyond that.
 function AuthGate() {
-  const { user, loading, isConfigured, isPasswordRecovery } = useAuth();
-  const [guestMode, setGuestMode] = useState(
-    () => localStorage.getItem(GUEST_MODE_KEY) === "1"
-  );
+  const { user, loading, isConfigured, isPasswordRecovery, guestMode, isGuest, enterGuestMode } = useAuth();
   // Live transit data (stops/routes/terminals) loads once here, before the
   // rest of the app ever mounts — see src/lib/transitSync.js. That keeps
   // routing.js and every page that reads its data synchronous, with no
@@ -56,20 +52,13 @@ function AuthGate() {
   }
 
   if (isConfigured && !user && !guestMode) {
-    return (
-      <LoginPage
-        onGuest={() => {
-          localStorage.setItem(GUEST_MODE_KEY, "1");
-          setGuestMode(true);
-        }}
-      />
-    );
+    return <LoginPage onGuest={enterGuestMode} />;
   }
 
   return (
     <>
       <HomePage />
-      <AiChat />
+      <AiChat isGuest={isGuest} />
     </>
   );
 }

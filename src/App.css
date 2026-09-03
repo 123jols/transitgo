@@ -842,18 +842,32 @@ button:active {
 
 .attractions-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
 }
 
 .attraction-card {
   display: grid;
+  align-content: start;
   width: 100%;
   background: var(--bg-surface);
   border: 1px solid rgba(var(--border-rgb), 0.10);
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.08);
   overflow: hidden;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms ease, border-color 200ms ease;
+}
+
+@media (hover: hover) {
+  .attraction-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 32px rgba(var(--shadow-rgb), 0.14);
+    border-color: rgba(var(--accent-primary-rgb), 0.24);
+  }
+
+  .attraction-card:hover .attraction-photo img {
+    transform: scale(1.04);
+  }
 }
 
 .attraction-photo {
@@ -865,6 +879,20 @@ button:active {
   background: rgba(var(--accent-primary-rgb), 0.10);
   color: var(--accent-primary-deep);
   font-size: 34px;
+  overflow: hidden;
+}
+
+.attraction-photo-skeleton {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    rgba(var(--accent-primary-rgb), 0.08) 30%,
+    rgba(var(--accent-primary-rgb), 0.18) 50%,
+    rgba(var(--accent-primary-rgb), 0.08) 70%
+  );
+  background-size: 200% 100%;
+  animation: exploreShimmer 1.6s ease-in-out infinite;
 }
 
 :root[data-theme="dark"] .attraction-photo {
@@ -875,6 +903,7 @@ button:active {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 260ms var(--ease-out);
 }
 
 .attraction-body {
@@ -943,6 +972,82 @@ button:active {
   background: rgba(var(--border-rgb), 0.16);
   color: var(--text-muted);
   cursor: not-allowed;
+}
+
+/* ---- Explore tab ---- */
+
+.explore-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.explore-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: #04170a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.explore-header-title {
+  margin: 0 0 2px;
+}
+
+.explore-header-subhead {
+  margin: 0;
+}
+
+@keyframes exploreCardIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.explore-card-in {
+  animation: exploreCardIn 420ms var(--ease-out) both;
+}
+
+@keyframes exploreShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes exploreOverlayIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.explore-search-overlay {
+  position: absolute;
+  top: 72px;
+  left: 16px;
+  right: 16px;
+  /* Must clear Leaflet's internal z-index 700 ceiling — see the matching
+     comment on .my-location-button — or the map's own panes paint over it. */
+  z-index: 900;
+  background: var(--bg-surface);
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(var(--border-rgb), 0.10);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  box-shadow: 0 10px 28px rgba(var(--shadow-rgb), 0.20);
+  animation: exploreOverlayIn 320ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explore-card-in,
+  .explore-search-overlay,
+  .attraction-photo-skeleton {
+    animation: none;
+  }
 }
 
 /* Terminals page */
@@ -2286,7 +2391,12 @@ button:active {
   position: absolute;
   top: 88px;
   right: 16px;
-  z-index: 140;
+  /* Leaflet's own internal panes (tile/overlay/marker/popup) run up to
+     z-index 700 and, since .leaflet-container never establishes its own
+     stacking context, escape into this element's ancestor stacking context
+     instead of staying contained — so this has to clear 700, not just be
+     "higher than the map div itself" (140 silently lost to popupPane). */
+  z-index: 900;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -2310,7 +2420,7 @@ button:active {
   top: 88px;
   left: 16px;
   right: 68px;
-  z-index: 140;
+  z-index: 900; /* see .my-location-button's comment on Leaflet's own z-index 700 ceiling */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2930,6 +3040,15 @@ button:active {
 
 .expense-card-link i {
   font-size: 14px;
+}
+
+.expense-card-locked {
+  background: var(--bg-surface);
+}
+
+.expense-card-locked .expense-card-header > i {
+  font-size: 14px;
+  color: var(--text-faint);
 }
 
 /* ===================== Expense history page ===================== */

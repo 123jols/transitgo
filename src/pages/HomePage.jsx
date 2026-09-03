@@ -688,8 +688,13 @@ export default function HomePage() {
       <BottomSheet snap={sheetSnap} onSnapChange={setSheetSnap}>
         {navTab === "explore" && (
           <>
-            <h2 className="hero-headline">Explore the map</h2>
-            <p className="hero-subhead">Search anywhere · Drag pins to fine-tune</p>
+            <div className="explore-header">
+              <div className="explore-header-icon"><i className="ti ti-map-2"></i></div>
+              <div>
+                <h2 className="hero-headline explore-header-title">Explore the map</h2>
+                <p className="hero-subhead explore-header-subhead">Search anywhere · Drag pins to fine-tune</p>
+              </div>
+            </div>
             <TouristSpots stops={stops} onSelect={viewRoutesTo} />
           </>
         )}

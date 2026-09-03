@@ -19,7 +19,7 @@ export default function ProfilePage({ onNavigate }) {
   const { theme } = useTheme();
   const { totals, reload, cloudSynced } = useExpenses();
   const { savedTrips } = useSavedTrips();
-  const { user, isConfigured, signOut } = useAuth();
+  const { user, isConfigured, isGuest, exitGuestMode, signOut } = useAuth();
   const { profile, updateProfile } = useUserProfile();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const accountTypeMeta = ACCOUNT_TYPES.find((t) => t.id === profile?.accountType);
@@ -132,31 +132,52 @@ export default function ProfilePage({ onNavigate }) {
 
       {showSosModal && <SosModal onClose={() => setShowSosModal(false)} />}
 
-      <button type="button" className="expense-card" onClick={() => setView("history")}>
-        <div className="expense-card-header">
-          <span className="expense-card-title">
-            <i className="ti ti-wallet"></i>
-            Travel Expenses
-            {cloudSynced && <i className="ti ti-cloud-check" title="Synced to your account"></i>}
+      {isGuest ? (
+        <button
+          type="button"
+          className="expense-card expense-card-locked"
+          onClick={exitGuestMode}
+        >
+          <div className="expense-card-header">
+            <span className="expense-card-title">
+              <i className="ti ti-wallet"></i>
+              Travel Expenses
+            </span>
+            <i className="ti ti-lock"></i>
+          </div>
+          <p className="expense-card-caption">Sign in to track what you spend on trips</p>
+          <span className="expense-card-link">
+            Sign In / Create Account
+            <i className="ti ti-arrow-right"></i>
           </span>
-        </div>
-        <p className="expense-card-total">{formatPeso(totals.month)}</p>
-        <p className="expense-card-caption">Spent this month</p>
-        <div className="expense-card-split">
-          <div className="expense-card-split-item">
-            <span>Today</span>
-            <strong>{formatPeso(totals.today)}</strong>
+        </button>
+      ) : (
+        <button type="button" className="expense-card" onClick={() => setView("history")}>
+          <div className="expense-card-header">
+            <span className="expense-card-title">
+              <i className="ti ti-wallet"></i>
+              Travel Expenses
+              {cloudSynced && <i className="ti ti-cloud-check" title="Synced to your account"></i>}
+            </span>
           </div>
-          <div className="expense-card-split-item">
-            <span>This Week</span>
-            <strong>{formatPeso(totals.week)}</strong>
+          <p className="expense-card-total">{formatPeso(totals.month)}</p>
+          <p className="expense-card-caption">Spent this month</p>
+          <div className="expense-card-split">
+            <div className="expense-card-split-item">
+              <span>Today</span>
+              <strong>{formatPeso(totals.today)}</strong>
+            </div>
+            <div className="expense-card-split-item">
+              <span>This Week</span>
+              <strong>{formatPeso(totals.week)}</strong>
+            </div>
           </div>
-        </div>
-        <span className="expense-card-link">
-          View Expense History
-          <i className="ti ti-arrow-right"></i>
-        </span>
-      </button>
+          <span className="expense-card-link">
+            View Expense History
+            <i className="ti ti-arrow-right"></i>
+          </span>
+        </button>
+      )}
 
       <div className="profile-section">
         <p className="section-label">My Transit</p>

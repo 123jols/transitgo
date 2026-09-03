@@ -3,7 +3,8 @@ import { useAuth } from "../context/AuthContext";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 
 const STORAGE_KEY = "transitgo-saved-trips";
-const LOCAL_TRIP_CAP = 20; // guests only — Supabase has no such size pressure
+const LOCAL_TRIP_CAP = 20; // signed-out-but-not-configured fallback only
+const GUEST_TRIP_CAP = 2; // riders who explicitly chose "Continue as guest"
 
 function loadLocalTrips() {
   try {
@@ -33,7 +34,7 @@ function fromSupabaseRow(row) {
 // Same dual-mode pattern as useExpenses.js: signed-in riders get saved trips
 // synced to Supabase; guests keep the original localStorage-only behavior.
 export default function useSavedTrips() {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const userId = user?.id;
   const cloudMode = isSupabaseConfigured && !!userId;
 
@@ -74,8 +75,12 @@ export default function useSavedTrips() {
     if (!cloudMode) saveLocalTrips(savedTrips);
   }, [savedTrips, cloudMode]);
 
+  // Returns a status so callers can surface feedback: "saved" | "duplicate" | "limit".
   const saveTripToTrips = (route, source, destination) => {
     const id = `${route.id}-${source.id}-${destination.id}`;
+    if (savedTrips.some((trip) => trip.id === id)) return "duplicate";
+    if (isGuest && savedTrips.length >= GUEST_TRIP_CAP) return "limit";
+
     setSavedTrips((prev) => {
       if (prev.some((trip) => trip.id === id)) return prev;
       const next = [{ id, route, from: source, to: destination, savedAt: new Date().toISOString() }, ...prev];
@@ -92,6 +97,8 @@ export default function useSavedTrips() {
           }
         });
     }
+
+    return "saved";
   };
 
   const removeSavedTrip = (id) => {

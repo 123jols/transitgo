@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import AiChatMap from "./AiChatMap";
+import { useAuth } from "../context/AuthContext";
 
 const SYSTEM_PROMPT = `You are TransitGo AI, the assistant built into the TransitGo app for Metro Cebu, Philippines.
 
@@ -84,7 +85,8 @@ function ChatMessage({ content }) {
   );
 }
 
-export default function AiChat() {
+export default function AiChat({ isGuest = false }) {
+  const { exitGuestMode } = useAuth();
   const [open, setOpen]       = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [messages, setMessages] = useState([
@@ -160,12 +162,54 @@ export default function AiChat() {
           zIndex: 300,
         }}
       >
-        <i className={`ti ${open ? "ti-x" : "ti-message-circle"}`}
+        <i className={`ti ${open ? "ti-x" : isGuest ? "ti-lock" : "ti-message-circle"}`}
            style={{ fontSize: 20, color: "#04170a" }} />
       </button>
 
       {/* Chat window */}
-      {open && (
+      {open && isGuest && (
+        <div className="ai-chat-window" style={{
+          position: "fixed",
+          bottom: "calc(var(--bottom-nav-height) + 74px)",
+          right: 16, left: 16, margin: "0 auto",
+          width: "auto", maxWidth: 340,
+          background: "var(--bg-surface)",
+          border: "1px solid rgba(var(--border-rgb), 0.14)",
+          borderRadius: 16,
+          overflow: "hidden", zIndex: 300,
+          boxShadow: "0 12px 32px rgba(var(--shadow-rgb), 0.18)",
+          fontFamily: "'Inter', system-ui, sans-serif",
+          transformOrigin: "bottom right",
+          padding: "24px 20px",
+          display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10,
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%",
+            background: "rgba(var(--accent-primary-rgb), 0.10)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <i className="ti ti-lock" style={{ fontSize: 20, color: "var(--accent-primary)" }} />
+          </div>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
+            Sign in to chat with TransitGo AI
+          </p>
+          <p style={{ fontSize: 12.5, color: "var(--text-faint)", margin: 0, lineHeight: 1.5 }}>
+            The AI assistant is available to signed-in riders. Create a free account to unlock it.
+          </p>
+          <button
+            type="button"
+            onClick={exitGuestMode}
+            style={{
+              marginTop: 6, width: "100%", padding: "10px 16px", borderRadius: 10,
+              background: "var(--accent-primary)", border: "none", cursor: "pointer",
+              fontSize: 13.5, fontWeight: 600, color: "#04170a",
+            }}
+          >
+            Sign In / Create Account
+          </button>
+        </div>
+      )}
+      {open && !isGuest && (
         <div className="ai-chat-window" style={{
           position: "fixed",
           bottom: "calc(var(--bottom-nav-height) + 74px)",

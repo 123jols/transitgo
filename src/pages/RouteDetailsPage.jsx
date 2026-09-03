@@ -3,6 +3,7 @@ import RouteMap from "../components/RouteMap";
 import ThemeToggle from "../components/ThemeToggle";
 import ExpenseFormModal from "../components/ExpenseFormModal";
 import useExpenses from "../hooks/useExpenses";
+import { useAuth } from "../context/AuthContext";
 import { stops } from "../data/db";
 import { haversineDistanceKm } from "../utils/geo";
 import { openGrabRide } from "../utils/grabLink";
@@ -51,6 +52,8 @@ export default function RouteDetailsPage({
     ? haversineDistanceKm(from, to).toFixed(1)
     : null;
   const vehicleIcon = VEHICLE_ICON[route.type] || "ti-bus";
+  const { exitGuestMode } = useAuth();
+  const [saveLimitReached, setSaveLimitReached] = useState(false);
   const [grabCopied, setGrabCopied] = useState(false);
   const handleGrabClick = () => {
     openGrabRide(from, to);
@@ -87,6 +90,11 @@ export default function RouteDetailsPage({
       ? "Keep change handy at each transfer."
       : "Have your fare ready for quick boarding.";
   const tripTip = `${aiInsight} ${practicalTip}`;
+
+  const handleSaveClick = () => {
+    const result = onSaveTrip();
+    setSaveLimitReached(result === "limit");
+  };
 
   return (
     <div className="route-details-container">
@@ -217,7 +225,7 @@ export default function RouteDetailsPage({
           <button
             type="button"
             className={`action-pill ${isSaved ? "active" : ""}`}
-            onClick={onSaveTrip}
+            onClick={handleSaveClick}
             disabled={isSaved}
           >
             <i className={`ti ${isSaved ? "ti-bookmark-check" : "ti-bookmark-plus"}`}></i>
@@ -243,6 +251,29 @@ export default function RouteDetailsPage({
           <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: -14 }}>
             Opening Grab… pickup/drop-off addresses copied in case they don't carry over.
           </p>
+        )}
+        {saveLimitReached && (
+          <div style={{
+            marginTop: -6, padding: "10px 12px", borderRadius: 10,
+            background: "rgba(var(--accent-primary-rgb), 0.08)",
+            border: "1px solid rgba(var(--accent-primary-rgb), 0.18)",
+            display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+          }}>
+            <i className="ti ti-lock" style={{ fontSize: 15, color: "var(--accent-primary)" }} />
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, flex: 1, minWidth: 160 }}>
+              Guests can save up to 2 trips. Sign in to save more.
+            </p>
+            <button
+              type="button"
+              onClick={exitGuestMode}
+              style={{
+                padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer",
+                background: "var(--accent-primary)", color: "#04170a", fontSize: 12, fontWeight: 600,
+              }}
+            >
+              Sign In
+            </button>
+          </div>
         )}
 
         {showExpenseModal && (

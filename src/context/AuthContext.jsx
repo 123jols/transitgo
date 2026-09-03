@@ -3,10 +3,15 @@ import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 
 const AuthContext = createContext(null);
 
+const GUEST_MODE_KEY = "transitgo-guest-mode";
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [guestMode, setGuestMode] = useState(
+    () => localStorage.getItem(GUEST_MODE_KEY) === "1"
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -80,6 +85,24 @@ export function AuthProvider({ children }) {
     setIsPasswordRecovery(false);
   };
 
+  const enterGuestMode = () => {
+    localStorage.setItem(GUEST_MODE_KEY, "1");
+    setGuestMode(true);
+  };
+
+  // Used to send a guest back through the login page — e.g. when they hit a
+  // signed-in-only feature (AI chat, more than 2 saved trips) and choose to
+  // create an account instead of staying limited.
+  const exitGuestMode = () => {
+    localStorage.removeItem(GUEST_MODE_KEY);
+    setGuestMode(false);
+  };
+
+  // True only for a visitor who explicitly chose "Continue as guest" — not
+  // simply "no user object", which is also briefly true before that choice
+  // is made (handled by the login gate) and while Supabase isn't configured.
+  const isGuest = isSupabaseConfigured && !user && guestMode;
+
   return (
     <AuthContext.Provider
       value={{
@@ -92,6 +115,10 @@ export function AuthProvider({ children }) {
         updatePassword,
         isPasswordRecovery,
         isConfigured: isSupabaseConfigured,
+        guestMode,
+        isGuest,
+        enterGuestMode,
+        exitGuestMode,
       }}
     >
       {children}

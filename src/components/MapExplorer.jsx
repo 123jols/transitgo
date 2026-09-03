@@ -469,19 +469,18 @@ export default function MapExplorer({ fullscreen = false, showSearchOverlay = tr
   );
 
   if (fullscreen) {
-    // zIndex: 0 makes this wrapper its own stacking context, so the overlays
-    // below (plain positive z-index) correctly paint above Leaflet's internal
-    // panes (its map pane alone sits at z-index 400) instead of leaking out
-    // and losing to them.
+    // zIndex: 0 makes this wrapper its own stacking context — but
+    // .leaflet-container itself never sets a z-index, so it doesn't get one
+    // of its own: Leaflet's internal panes (tile/overlay/marker/popup, up to
+    // z-index 700) compete directly against this wrapper's other children
+    // rather than staying contained inside the map div. The overlays below
+    // (search box, locate button/banner) all use z-index 900 in App.css for
+    // exactly this reason — anything lower silently loses to popupPane.
     return (
       <div style={{ position: "relative", width: "100%", height: "100%", zIndex: 0 }}>
         <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
         {showSearchOverlay && (
-          <div style={{
-            position: "absolute", top: 72, left: 16, right: 16, zIndex: 150,
-            background: "var(--bg-surface)", borderRadius: "var(--radius-lg)",
-            padding: 14, boxShadow: "0 8px 24px rgba(var(--shadow-rgb), 0.18)",
-          }}>
+          <div className="explore-search-overlay">
             {searchFields}
             {(routeInfo || error || routing) && <div style={{ marginTop: 10 }}>{statusInfo}</div>}
           </div>

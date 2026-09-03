@@ -1,15 +1,17 @@
 import { attractions } from "../data/attractions";
 import useWikiThumbnail from "../hooks/useWikiThumbnail";
 
-function AttractionCard({ spot, stops, onViewRoute }) {
-  const photoUrl = useWikiThumbnail(spot.wikiTitle);
+function AttractionCard({ spot, stops, onViewRoute, index }) {
+  const { url: photoUrl, loading } = useWikiThumbnail(spot.wikiTitle);
   const stop = stops.find((s) => s.id === spot.nearestStopId);
 
   return (
-    <div className="attraction-card">
+    <div className="attraction-card explore-card-in" style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}>
       <div className="attraction-photo">
         {photoUrl ? (
           <img src={photoUrl} alt={spot.name} loading="lazy" />
+        ) : loading ? (
+          <div className="attraction-photo-skeleton" />
         ) : (
           <i className={`ti ${spot.icon}`}></i>
         )}
@@ -39,8 +41,8 @@ export default function TouristSpots({ stops, onSelect }) {
     <div className="attractions-section">
       <p className="section-label">Famous Spots in Cebu</p>
       <div className="attractions-grid">
-        {attractions.map((spot) => (
-          <AttractionCard key={spot.id} spot={spot} stops={stops} onViewRoute={onSelect} />
+        {attractions.map((spot, i) => (
+          <AttractionCard key={spot.id} spot={spot} stops={stops} onViewRoute={onSelect} index={i} />
         ))}
       </div>
     </div>
