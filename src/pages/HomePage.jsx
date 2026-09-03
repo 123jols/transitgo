@@ -7,6 +7,9 @@ import ThemeToggle from "../components/ThemeToggle";
 import MapExplorer from "../components/MapExplorer";
 import NearbyTerminalsCard from "../components/NearbyTerminalsCard";
 import TouristSpots from "../components/TouristSpots";
+import ExploreNearby from "../components/ExploreNearby";
+import ExploreHubs from "../components/ExploreHubs";
+import ExploreSearchResults from "../components/ExploreSearchResults";
 import SwipeToDelete from "../components/SwipeToDelete";
 import BottomSheet from "../components/BottomSheet";
 import BottomNav from "../components/BottomNav";
@@ -16,7 +19,16 @@ import ProfilePage from "./ProfilePage";
 import GrabRideCard from "../components/GrabRideCard";
 import useGrabEstimate from "../hooks/useGrabEstimate";
 import useSavedTrips from "../hooks/useSavedTrips";
+import { attractions } from "../data/attractions";
+import { terminals } from "../data/terminals";
 import { RIDER_TYPES, getStoredRiderType, setStoredRiderType } from "../data/riderTypes";
+
+const EXPLORE_CATEGORIES = [
+  { key: "all", label: "All", icon: "ti-apps" },
+  { key: "tourist", label: "Tourist Spots", icon: "ti-map-pin" },
+  { key: "terminals", label: "Terminals", icon: "ti-bus-stop" },
+  { key: "stops", label: "Stops", icon: "ti-map-pin-filled" },
+];
 
 // Only auto-fill "From" with a detected stop if it's actually within Metro
 // Cebu — otherwise a GPS fix from way outside our coverage area (or a bad
@@ -89,6 +101,13 @@ export default function HomePage() {
   const [navTab, setNavTab] = useState("home");
   const [locStatus, setLocStatus] = useState("idle"); // idle | locating | ok | denied
   const [locError, setLocError] = useState("");
+  // Raw GPS coords, independent of the "From" field above — that field only
+  // tracks location while autoLocateRef is engaged (it stops once the rider
+  // types a manual origin), but Explore's "Nearby You" distances need the
+  // rider's real position regardless of what they've done to trip search.
+  const [myCoords, setMyCoords] = useState(null);
+  const [exploreCategory, setExploreCategory] = useState("all");
+  const [exploreQuery, setExploreQuery] = useState("");
   const searchTimeoutRef = useRef(null);
   const fromRef = useRef(null);
   // True while the "From" field should keep tracking live GPS fixes; flipped
@@ -406,6 +425,7 @@ export default function HomePage() {
   // sync as the rider actually moves — as long as autoLocateRef is still
   // true, i.e. they haven't since taken manual control of the field.
   const applyGpsFix = async (lat, lon) => {
+    setMyCoords({ lat, lon });
     if (!autoLocateRef.current) return;
 
     const last = lastGeocodedFixRef.current;
@@ -468,6 +488,27 @@ export default function HomePage() {
     } else {
       setLocStatus("denied");
     }
+  };
+
+  // Explore's own "Enable Location" trigger — deliberately doesn't touch the
+  // "From" field (unlike retryLocate above), since tapping it from the
+  // Explore tab shouldn't silently change what the Home tab's trip search
+  // is anchored to. Shares locStatus with the rest of the page so a prior
+  // denial elsewhere still suppresses the button instead of re-prompting.
+  const enableExploreLocation = () => {
+    if (!navigator.geolocation) {
+      setLocStatus("denied");
+      return;
+    }
+    setLocStatus("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setMyCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setLocStatus("ok");
+      },
+      () => setLocStatus("denied"),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const swapStops = () => {
@@ -669,6 +710,14 @@ export default function HomePage() {
     );
   }
 
+  // Reuses the exact same real stop/terminal/attraction search the Home
+  // tab's From/To fields already run (api/transit.js) rather than a second,
+  // parallel search implementation just for Explore.
+  const exploreSearchResults = exploreQuery.trim() ? searchDestinations(exploreQuery.trim()) : null;
+  const exploreTouristSpots = exploreCategory === "all" || exploreCategory === "tourist"
+    ? attractions
+    : [];
+
   return (
     <div className="home-shell">
       {/* Full-screen map background */}
@@ -691,11 +740,76 @@ export default function HomePage() {
             <div className="explore-header">
               <div className="explore-header-icon"><i className="ti ti-map-2"></i></div>
               <div>
-                <h2 className="hero-headline explore-header-title">Explore the map</h2>
-                <p className="hero-subhead explore-header-subhead">Search anywhere · Drag pins to fine-tune</p>
+                <h2 className="hero-headline explore-header-title">Explore</h2>
+                <p className="hero-subhead explore-header-subhead">Discover places and transportation around you.</p>
               </div>
             </div>
-            <TouristSpots stops={stops} onSelect={viewRoutesTo} />
+
+            <div className="explore-search-field">
+              <i className="ti ti-search"></i>
+              <input
+                type="text"
+                value={exploreQuery}
+                onChange={(e) => setExploreQuery(e.target.value)}
+                placeholder="Search destinations, terminals, or places"
+              />
+              {exploreQuery && (
+                <button type="button" className="explore-search-clear" onClick={() => setExploreQuery("")}>
+                  <i className="ti ti-x"></i>
+                </button>
+              )}
+            </div>
+
+            <div className="chips-scroll-wrapper">
+              <div className="chips-scroll">
+                {EXPLORE_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    className={`quick-chip${exploreCategory === cat.key ? " quick-chip-active" : ""}`}
+                    onClick={() => setExploreCategory(cat.key)}
+                  >
+                    <i className={`ti ${cat.icon}`}></i>
+                    <span>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="chips-fade" aria-hidden="true"></div>
+            </div>
+
+            {exploreSearchResults ? (
+              <ExploreSearchResults
+                results={exploreSearchResults}
+                myCoords={myCoords}
+                onDirections={viewRoutesTo}
+              />
+            ) : (
+              <>
+                <ExploreNearby
+                  stops={stops}
+                  terminals={terminals}
+                  myCoords={myCoords}
+                  category={exploreCategory}
+                  locDenied={locStatus === "denied"}
+                  onEnableLocation={enableExploreLocation}
+                  onDirections={viewRoutesTo}
+                />
+
+                {(exploreCategory === "all" || exploreCategory === "tourist") && (
+                  <TouristSpots spots={exploreTouristSpots} stops={stops} myCoords={myCoords} onSelect={viewRoutesTo} />
+                )}
+
+                {(exploreCategory === "all" || exploreCategory === "terminals") && (
+                  <ExploreHubs
+                    stops={stops}
+                    terminals={terminals}
+                    myCoords={myCoords}
+                    onDirections={viewRoutesTo}
+                    onViewAll={() => setNavTab("terminals")}
+                  />
+                )}
+              </>
+            )}
           </>
         )}
 
