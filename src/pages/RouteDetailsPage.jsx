@@ -2,12 +2,12 @@ import { useState } from "react";
 import RouteMap from "../components/RouteMap";
 import ThemeToggle from "../components/ThemeToggle";
 import ExpenseFormModal from "../components/ExpenseFormModal";
+import NavigationView from "../components/NavigationView";
 import useExpenses from "../hooks/useExpenses";
 import { useAuth } from "../context/AuthContext";
 import { stops } from "../data/db";
 import { haversineDistanceKm } from "../utils/geo";
 import { openGrabRide } from "../utils/grabLink";
-import { openWalkingDirections } from "../utils/navigation";
 
 const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
 
@@ -52,8 +52,9 @@ export default function RouteDetailsPage({
     ? haversineDistanceKm(from, to).toFixed(1)
     : null;
   const vehicleIcon = VEHICLE_ICON[route.type] || "ti-bus";
-  const { exitGuestMode } = useAuth();
+  const { isGuest, exitGuestMode } = useAuth();
   const [saveLimitReached, setSaveLimitReached] = useState(false);
+  const [navLocked, setNavLocked] = useState(false);
   const [grabCopied, setGrabCopied] = useState(false);
   const handleGrabClick = () => {
     openGrabRide(from, to);
@@ -65,15 +66,12 @@ export default function RouteDetailsPage({
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseSaved, setExpenseSaved] = useState(false);
 
-  // Walking directions to the first physical stop the rider needs to reach
-  // — the first leg's boarding point if one exists, otherwise straight to
-  // the destination (a walk-only trip, or a fallback single-leg route with
-  // no coordinate-bearing legs array).
-  const handleStartNavigation = () => {
-    const firstLeg = route.legs && route.legs.length > 0 ? route.legs[0] : null;
-    const target = (firstLeg && stopById[firstLeg.toId]) || to;
-    openWalkingDirections(target.lat, target.lon);
-  };
+  // The first physical stop the rider needs to walk to — the first leg's
+  // boarding point if one exists, otherwise straight to the destination (a
+  // walk-only trip, or a fallback single-leg route with no legs array).
+  const [showNavigation, setShowNavigation] = useState(false);
+  const firstLeg = route.legs && route.legs.length > 0 ? route.legs[0] : null;
+  const navigationTarget = (firstLeg && stopById[firstLeg.toId]) || to;
 
   // One combined "trip tip" — the old design showed this same kind of advice
   // split across two separate cards (an "AI Insight" and a generic "Tips"
@@ -94,6 +92,14 @@ export default function RouteDetailsPage({
   const handleSaveClick = () => {
     const result = onSaveTrip();
     setSaveLimitReached(result === "limit");
+  };
+
+  const handleStartNavigationClick = () => {
+    if (isGuest) {
+      setNavLocked(true);
+      return;
+    }
+    setShowNavigation(true);
   };
 
   return (
@@ -296,16 +302,47 @@ export default function RouteDetailsPage({
           />
         )}
 
+        {navLocked && (
+          <div style={{
+            marginTop: -6, padding: "10px 12px", borderRadius: 10,
+            background: "rgba(var(--accent-primary-rgb), 0.08)",
+            border: "1px solid rgba(var(--accent-primary-rgb), 0.18)",
+            display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+          }}>
+            <i className="ti ti-lock" style={{ fontSize: 15, color: "var(--accent-primary)" }} />
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, flex: 1, minWidth: 160 }}>
+              Sign in to use turn-by-turn navigation.
+            </p>
+            <button
+              type="button"
+              onClick={exitGuestMode}
+              style={{
+                padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer",
+                background: "var(--accent-primary)", color: "#04170a", fontSize: 12, fontWeight: 600,
+              }}
+            >
+              Sign In
+            </button>
+          </div>
+        )}
+
         {/* Primary CTA */}
         <button
           type="button"
           className="start-navigation-button"
-          onClick={handleStartNavigation}
+          onClick={handleStartNavigationClick}
         >
           <i className="ti ti-navigation"></i>
           Start Navigation
         </button>
       </div>
+
+      {showNavigation && !isGuest && (
+        <NavigationView
+          destination={{ lat: navigationTarget.lat, lon: navigationTarget.lon, name: navigationTarget.name }}
+          onClose={() => setShowNavigation(false)}
+        />
+      )}
     </div>
   );
 }

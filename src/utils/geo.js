@@ -45,6 +45,27 @@ export function formatDistance(km) {
   return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`;
 }
 
+// Initial great-circle bearing from `from` to `to`, in degrees clockwise
+// from true north (0-360) — what the AR camera overlay rotates its arrow
+// against once it also knows which way the phone itself is facing.
+export function bearingTo(from, to) {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const y = Math.sin(toRad(to.lon - from.lon)) * Math.cos(toRad(to.lat));
+  const x =
+    Math.cos(toRad(from.lat)) * Math.sin(toRad(to.lat)) -
+    Math.sin(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.cos(toRad(to.lon - from.lon));
+  const deg = (Math.atan2(y, x) * 180) / Math.PI;
+  return (deg + 360) % 360;
+}
+
+const COMPASS_LABELS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+
+// Fallback direction text for when no compass heading is available yet
+// (desktop, or before the rider grants the iOS motion-sensor prompt).
+export function compassLabel(bearingDeg) {
+  return COMPASS_LABELS[Math.round(bearingDeg / 45) % 8];
+}
+
 // Turns a GPS fix into a human-readable address via Nominatim's public
 // reverse-geocoding endpoint (the same OSM service MapExplorer already uses
 // for its own pins). Throws on network failure or an empty result so
