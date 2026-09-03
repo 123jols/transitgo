@@ -37,6 +37,8 @@ import { haversineDistanceKm } from "../utils/geo";
 // `longRoute: true` marks the provincial bus terminals, where missing the
 // last ride matters a lot more than for a city jeepney that just runs again
 // in a few minutes — TerminalsPage gives those hours extra visual weight.
+// Same live-mutation pattern as src/data/db.js's stops/jeepneyRoutes/walkLinks
+// — see replaceTerminals() below and src/lib/transitSync.js.
 export const terminals = [
   {
     id: "it-park-terminal",
@@ -112,6 +114,10 @@ export const terminals = [
     longRoute: true,
   },
 ];
+
+export function replaceTerminals(newTerminals) {
+  terminals.splice(0, terminals.length, ...newTerminals);
+}
 
 // Real terminal spacing in this dataset is mostly 1-3km apart (city-scale,
 // not walkable-scale) with one close pair (SM City/North Bus, ~196m) — 600m

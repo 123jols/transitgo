@@ -2,7 +2,10 @@ import { stops, jeepneyRoutes, walkLinks } from "../data/db";
 import { terminals, DEFAULT_TERMINAL_RADIUS_KM } from "../data/terminals";
 import { haversineDistanceKm } from "./geo";
 
-const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
+// Rebuilt (not just read once) by rebuildRoutingGraph() below, since `stops`
+// is itself replaced in place after a live data load — a stale stopById
+// snapshot from module-load time would still resolve old ids.
+let stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
 
 // Standard Philippine LTFRB jeepney minimum-fare matrix: flat minimum fare
 // for the first few km, then a per-km increment beyond that. Not a
@@ -22,12 +25,16 @@ const MIN_FARE = 14;
 const MIN_FARE_KM = 4;
 const PER_KM_RATE = 2;
 
-function fareForDistance(km) {
+// Exported for the admin route form's live "Estimated fare/duration"
+// readout — the whole point of computing fare from a formula instead of
+// letting an admin type an arbitrary number is that it can't drift from
+// the real distance between whatever stops they've actually picked.
+export function fareForDistance(km) {
   if (km <= MIN_FARE_KM) return MIN_FARE;
   return Math.round(MIN_FARE + (km - MIN_FARE_KM) * PER_KM_RATE);
 }
 
-function durationForDistance(km) {
+export function durationForDistance(km) {
   return Math.max(3, Math.round((km / JEEPNEY_SPEED_KMH) * 60));
 }
 
@@ -73,8 +80,20 @@ function buildWalkEdges() {
   return edges;
 }
 
-const rideEdges = buildRideEdges();
-const walkEdges = buildWalkEdges();
+let rideEdges = buildRideEdges();
+let walkEdges = buildWalkEdges();
+
+// Recomputes stopById + both edge lists from the current contents of
+// stops/jeepneyRoutes/walkLinks. Called once at module load (line above,
+// same as before this existed) and again by src/lib/transitSync.js right
+// after replaceTransitData() mutates those arrays — the DFS pathfinding
+// below (findPaths) always reads the current rideEdges/walkEdges bindings,
+// so a rebuild here is all live search needs to pick up admin changes.
+export function rebuildRoutingGraph() {
+  stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
+  rideEdges = buildRideEdges();
+  walkEdges = buildWalkEdges();
+}
 
 const MAX_RIDES = 3;
 const MAX_WALK_LEGS = 2;

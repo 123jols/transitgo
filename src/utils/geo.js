@@ -22,6 +22,23 @@ export function walkingMinutes(km) {
   return Math.max(1, Math.round((km / WALKING_SPEED_KMH) * 60));
 }
 
+// Forward geocoding for the admin location picker's search box — same
+// Nominatim service as reverseGeocode above, just the other direction.
+// Returns up to 5 candidates so the admin can pick the right one rather
+// than silently jumping to Nominatim's single best (and possibly wrong)
+// guess.
+export async function forwardGeocode(query) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=0`;
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`Location search failed (${res.status})`);
+  const data = await res.json();
+  return data.map((item) => ({
+    label: item.display_name,
+    lat: Number(item.lat),
+    lon: Number(item.lon),
+  }));
+}
+
 // "250m" below 1km, "1.3km" at/above it — matches how riders actually
 // think about short walking distances instead of always showing decimal km.
 export function formatDistance(km) {

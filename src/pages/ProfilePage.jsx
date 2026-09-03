@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import ExpensesPage from "./ExpensesPage";
+import LoginPage from "./LoginPage";
 import ThemeToggle from "../components/ThemeToggle";
 import SosModal from "../components/SosModal";
-import AuthModal from "../components/AuthModal";
 import EditProfileModal from "../components/EditProfileModal";
 import { ACCOUNT_TYPES } from "../components/PersonalInfoFields";
 import useTheme from "../hooks/useTheme";
@@ -21,7 +21,6 @@ export default function ProfilePage({ onNavigate }) {
   const { savedTrips } = useSavedTrips();
   const { user, isConfigured, signOut } = useAuth();
   const { profile, updateProfile } = useUserProfile();
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const accountTypeMeta = ACCOUNT_TYPES.find((t) => t.id === profile?.accountType);
 
@@ -44,6 +43,10 @@ export default function ProfilePage({ onNavigate }) {
 
   if (view === "history") {
     return <ExpensesPage onBack={() => setView("main")} />;
+  }
+
+  if (view === "login") {
+    return <LoginPage onBack={() => setView("main")} />;
   }
 
   const saveName = () => {
@@ -273,6 +276,21 @@ export default function ProfilePage({ onNavigate }) {
                     </div>
                     <i className="ti ti-chevron-right profile-row-chevron"></i>
                   </button>
+                  {profile.isAdmin && (
+                    <button
+                      type="button"
+                      className="profile-row"
+                      onClick={() => window.location.assign("/admin")}
+                    >
+                      <div className="recent-icon">
+                        <i className="ti ti-shield-lock"></i>
+                      </div>
+                      <div className="recent-content">
+                        <p className="recent-name">Admin Dashboard</p>
+                      </div>
+                      <i className="ti ti-chevron-right profile-row-chevron"></i>
+                    </button>
+                  )}
                 </>
               )}
               <button type="button" className="profile-row" onClick={signOut}>
@@ -285,7 +303,7 @@ export default function ProfilePage({ onNavigate }) {
               </button>
             </>
           ) : (
-            <button type="button" className="profile-row" onClick={() => setShowAuthModal(true)}>
+            <button type="button" className="profile-row" onClick={() => setView("login")}>
               <div className="recent-icon">
                 <i className="ti ti-cloud"></i>
               </div>
@@ -299,7 +317,6 @@ export default function ProfilePage({ onNavigate }) {
         </div>
       </div>
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {showEditProfile && profile && (
         <EditProfileModal
           profile={profile}

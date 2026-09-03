@@ -8,6 +8,7 @@ function fromRow(row) {
     fullName: row.full_name,
     email: row.email,
     accountType: row.account_type, // "student" | "regular"
+    isAdmin: row.is_admin || false,
     phoneNumber: row.phone_number,
     age: row.age,
     address: {

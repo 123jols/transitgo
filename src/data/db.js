@@ -1,5 +1,14 @@
 // Metro Cebu stop/landmark registry.
 // Coordinates are approximate landmark locations, not surveyed jeepney stop poles.
+//
+// These three arrays are the seed/fallback AND the live app's actual data
+// source at the same time: replaceTransitData() (called by src/lib/transitSync.js
+// once at boot, after fetching from Supabase) mutates them in place rather
+// than reassigning the export, so every existing importer of `stops`/
+// `jeepneyRoutes`/`walkLinks` across the app keeps working unchanged and
+// automatically sees live data — no subscriptions, no React state needed
+// here. If Supabase is unreachable or unconfigured, these hardcoded values
+// are what the app runs on, same as before the admin dashboard existed.
 export const stops = [
   { id: "it-park", name: "IT Park Cebu", type: "business", lat: 10.3298, lon: 123.9057 },
   { id: "sm-city", name: "SM City Cebu", type: "mall", lat: 10.3111, lon: 123.9186 },
@@ -132,3 +141,15 @@ export const walkLinks = [
   { stopIds: ["carbon", "colon"], minutes: 5 },
   { stopIds: ["colon", "basilica"], minutes: 8 },
 ];
+
+// Replaces the contents of stops/jeepneyRoutes/walkLinks in place (mutating
+// the arrays above, not reassigning these `const` bindings) so every module
+// that already imported them keeps a live reference to the same arrays.
+// Called once at boot by src/lib/transitSync.js after a successful Supabase
+// fetch; never called at all if Supabase isn't configured or the fetch
+// fails, in which case the hardcoded seed above stays in effect.
+export function replaceTransitData({ stops: newStops, routes: newRoutes, walkLinks: newWalkLinks }) {
+  stops.splice(0, stops.length, ...newStops);
+  jeepneyRoutes.splice(0, jeepneyRoutes.length, ...newRoutes);
+  walkLinks.splice(0, walkLinks.length, ...newWalkLinks);
+}
