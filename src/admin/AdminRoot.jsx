@@ -6,12 +6,14 @@ import AdminDashboardPage from "./AdminDashboardPage";
 import AdminRoutesPage from "./AdminRoutesPage";
 import AdminTerminalsPage from "./AdminTerminalsPage";
 import AdminStopsPage from "./AdminStopsPage";
+import AdminDestinationsPage from "./AdminDestinationsPage";
 
 const SECTION_TITLES = {
   dashboard: "Dashboard",
   routes: "Routes",
   terminals: "Terminals",
   stops: "Stops",
+  destinations: "Destinations",
 };
 
 function AdminMessageScreen({ icon, title, body, action }) {
@@ -108,6 +110,7 @@ export default function AdminRoot() {
           {section === "routes" && <AdminRoutesPage />}
           {section === "terminals" && <AdminTerminalsPage />}
           {section === "stops" && <AdminStopsPage />}
+          {section === "destinations" && <AdminDestinationsPage />}
         </div>
       </div>
     </div>

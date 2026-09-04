@@ -1,10 +1,24 @@
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import { replaceTransitData } from "../data/db";
 import { replaceTerminals } from "../data/terminals";
+import { replaceAttractions } from "../data/attractions";
 import { rebuildRoutingGraph } from "../utils/routing";
 
 function toStop(row) {
   return { id: row.id, name: row.name, type: row.type, lat: row.lat, lon: row.lon };
+}
+
+function toDestination(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    location: row.location,
+    description: row.description,
+    icon: row.icon,
+    category: row.category,
+    wikiTitle: row.wiki_title,
+    nearestStopId: row.nearest_stop_id,
+  };
 }
 
 function toTerminal(row) {
@@ -47,15 +61,16 @@ export async function loadLiveTransitData() {
   if (!isSupabaseConfigured) return;
 
   try {
-    const [stopsRes, routesRes, routeStopsRes, walkLinksRes, terminalsRes] = await Promise.all([
+    const [stopsRes, routesRes, routeStopsRes, walkLinksRes, terminalsRes, destinationsRes] = await Promise.all([
       supabase.from("stops").select("*").eq("status", "active"),
       supabase.from("routes").select("*").eq("status", "active"),
       supabase.from("route_stops").select("route_id, stop_id, stop_order"),
       supabase.from("walk_links").select("*").eq("status", "active"),
       supabase.from("terminals").select("*").eq("status", "active"),
+      supabase.from("destinations").select("*").eq("status", "active"),
     ]);
 
-    const firstError = [stopsRes, routesRes, routeStopsRes, walkLinksRes, terminalsRes].find((r) => r.error)?.error;
+    const firstError = [stopsRes, routesRes, routeStopsRes, walkLinksRes, terminalsRes, destinationsRes].find((r) => r.error)?.error;
     if (firstError) throw firstError;
 
     const stopsById = new Set(stopsRes.data.map((s) => s.id));
@@ -79,6 +94,11 @@ export async function loadLiveTransitData() {
 
     replaceTransitData({ stops: stopsRes.data.map(toStop), routes, walkLinks });
     replaceTerminals(terminalsRes.data.map(toTerminal));
+    // A destination whose nearest_stop_id no longer resolves to an active
+    // stop is NOT filtered out here (unlike walkLinks/routes above) — it
+    // should still show up in Explore, just non-routable. TouristSpots.jsx's
+    // AttractionCard already handles that via disabled={!stop}.
+    replaceAttractions(destinationsRes.data.map(toDestination));
     rebuildRoutingGraph();
   } catch (err) {
     console.warn("Could not load live transit data from Supabase — using bundled data instead", err);

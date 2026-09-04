@@ -3,6 +3,7 @@ const NAV_ITEMS = [
   { key: "routes", label: "Routes", icon: "ti-route" },
   { key: "terminals", label: "Terminals", icon: "ti-bus-stop" },
   { key: "stops", label: "Stops", icon: "ti-map-pin" },
+  { key: "destinations", label: "Destinations", icon: "ti-map-pin-star" },
 ];
 
 export default function AdminSidebar({ section, onSelect, open, onClose, adminEmail, onExit, onSignOut }) {

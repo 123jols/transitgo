@@ -2,6 +2,7 @@ import { stops } from "../data/db";
 import { terminals } from "../data/terminals";
 import { attractions } from "../data/attractions";
 import { findRoutesBetween } from "../utils/routing";
+import { rankBySimilarity } from "../utils/fuzzyMatch";
 
 const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
 
@@ -65,6 +66,57 @@ export function searchDestinations(query) {
   });
 
   return results;
+}
+
+// Same underlying place list as searchDestinations (stops + terminals +
+// attractions/destinations), but ranked by fuzzy similarity instead of
+// requiring a substring match — for resolving AI-extracted or typo-prone
+// destination text (e.g. "jmall", "sto nino") against real, verified places
+// only. Never invents a place: anything scoring below the threshold is
+// simply not returned, so a query for somewhere not in the database (like
+// "SM JMall" — see the routing audit) correctly comes back empty rather
+// than forcing a bad guess. Deduped by underlying stop id, keeping each
+// stop's single best-scoring label, so the same physical place doesn't
+// appear twice (e.g. a stop and its same-location terminal).
+export function resolveDestinationCandidates(query, { limit = 5 } = {}) {
+  if (!query || !query.trim()) return [];
+
+  const pool = [];
+  stops.forEach((stop) => {
+    pool.push({ id: stop.id, label: stop.name, subtitle: "Transit stop", stop });
+  });
+  terminals.forEach((terminal) => {
+    if (!terminal.stopId) return;
+    const stop = stopById[terminal.stopId];
+    if (!stop) return;
+    pool.push({ id: `terminal-${terminal.id}`, label: terminal.name, subtitle: "Terminal", stop });
+  });
+  attractions.forEach((spot) => {
+    if (!spot.nearestStopId) return;
+    const stop = stopById[spot.nearestStopId];
+    if (!stop) return;
+    pool.push({
+      id: `attraction-${spot.id}`,
+      label: spot.name,
+      subtitle: `Tourist spot · routes via ${stop.name}`,
+      stop,
+    });
+  });
+
+  const ranked = rankBySimilarity(pool, query);
+
+  const bestByStopId = new Map();
+  for (const { item, score } of ranked) {
+    const existing = bestByStopId.get(item.stop.id);
+    if (!existing || score > existing.score) {
+      bestByStopId.set(item.stop.id, { item, score });
+    }
+  }
+
+  return [...bestByStopId.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ item, score }) => ({ ...item, confidence: score }));
 }
 
 export function findRoutes(fromId, toId) {

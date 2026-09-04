@@ -177,27 +177,48 @@ function legsToRouteObject(legs) {
   };
 }
 
-// Fewest transfers first, then fastest, then cheapest — the single ranking
-// rule for "which trip is better," shared by findRoutesBetween's own result
-// ordering and by bestTerminalFor's cross-candidate comparison below so
-// there's one definition of "best," not two that could quietly disagree.
+// Minutes spent walking (not riding) within a trip — e.g. a walkLinks hop
+// used mid-journey. Deliberately does NOT include the "GPS fix to the first
+// boarding stop" walk: every candidate trip for a given findRoutesBetween()
+// call shares the same fromId, so that first-mile walk is constant across
+// all of them and can't distinguish one candidate from another — it's a
+// property of which stop got picked as the origin, not of the trip itself.
+export function walkMinutesOf(trip) {
+  return trip.legs.reduce((sum, l) => sum + (l.kind === "walk" ? l.duration : 0), 0);
+}
+
+// Fewest (ride) transfers first, then least in-trip walking, then fastest,
+// then cheapest, then fewest legs (simplicity) as a final tiebreaker — the
+// single ranking rule for "which trip is better," shared by
+// findRoutesBetween's own result ordering, selectDisplayRoutes' dominance
+// filter below, and bestTerminalFor's cross-candidate comparison, so
+// there's one definition of "best," not several that could quietly disagree.
 export function compareTrips(a, b) {
   if (a.transfers !== b.transfers) return a.transfers - b.transfers;
+  const walkA = walkMinutesOf(a);
+  const walkB = walkMinutesOf(b);
+  if (walkA !== walkB) return walkA - walkB;
   if (a.duration !== b.duration) return a.duration - b.duration;
-  return a.fare - b.fare;
+  if (a.fare !== b.fare) return a.fare - b.fare;
+  return a.legs.length - b.legs.length;
 }
 
 // Finds real, direction-aware commuter itineraries between two stop IDs.
 // Searches direct routes first, then 1, 2, and up to 3 rides with transfers,
-// ranked by fewest rides, then duration, then fare.
+// ranked by fewest rides, then least walking, then fastest, then cheapest.
 export function findRoutesBetween(fromId, toId) {
   if (!fromId || !toId || fromId === toId) return [];
 
   const routeObjects = findPaths(fromId, toId).map(legsToRouteObject);
 
+  // Deduped by the actual leg sequence (kind + route code + stop pair per
+  // leg), not just the stop-name sequence — two genuinely different
+  // services that happen to pass through the same named stops are kept as
+  // distinct candidates; only truly identical journeys (same rides, same
+  // order) collapse to one.
   const seen = new Set();
   const deduped = routeObjects.filter((r) => {
-    const key = r.stops.join("|");
+    const key = r.legs.map((l) => `${l.kind}:${l.code || ""}:${l.fromId}-${l.toId}`).join("|");
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -206,6 +227,47 @@ export function findRoutesBetween(fromId, toId) {
   deduped.sort(compareTrips);
 
   return deduped.slice(0, MAX_RESULTS);
+}
+
+// How much better an alternative needs to be than the best route, on an
+// axis the best doesn't already win, before it's worth showing at all — a
+// UX heuristic (not a sourced fact like the fare formula above), so these
+// are plain, documented constants rather than anything claiming precision.
+const ALT_WALK_SAVINGS_MIN = 5;
+const ALT_DURATION_SAVINGS_MIN = 5;
+const ALT_FARE_SAVINGS = 5;
+const MAX_ALTERNATIVES = 3;
+
+// Splits an already-ranked (compareTrips-sorted) trip list into one BEST
+// route plus a small set of genuinely meaningful alternatives, instead of
+// presenting every technically-valid path as equally prominent. A trip
+// tying the best trip's transfer count is always a legitimate peer (e.g.
+// two different direct routes) and is kept; a trip with MORE transfers than
+// the best only earns a spot if it beats the best by a real margin on
+// walking, duration, or fare — otherwise it's a strictly-worse detour and is
+// dropped rather than cluttering the results. `trips` must already be
+// compareTrips-sorted (findRoutesBetween's return value already is).
+export function selectDisplayRoutes(trips) {
+  if (!trips.length) return { best: null, alternatives: [] };
+
+  const [best, ...rest] = trips;
+  const bestWalk = walkMinutesOf(best);
+
+  const alternatives = [];
+  for (const trip of rest) {
+    if (alternatives.length >= MAX_ALTERNATIVES) break;
+
+    const isPeer = trip.transfers === best.transfers;
+    const beatsWalk = bestWalk - walkMinutesOf(trip) >= ALT_WALK_SAVINGS_MIN;
+    const beatsDuration = best.duration - trip.duration >= ALT_DURATION_SAVINGS_MIN;
+    const beatsFare = best.fare - trip.fare >= ALT_FARE_SAVINGS;
+
+    if (isPeer || beatsWalk || beatsDuration || beatsFare) {
+      alternatives.push(trip);
+    }
+  }
+
+  return { best, alternatives };
 }
 
 // The known stop nearest a GPS fix, or null if none are within maxKm.

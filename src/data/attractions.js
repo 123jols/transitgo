@@ -17,6 +17,12 @@
 // Leah, Sirao Garden), travelsetu.com (Cebu Taoist Temple), whycebu.com
 // (Moalboal), phbus.com (Oslob/Kawasan via South Bus Terminal), various
 // "how to get to Mactan Shrine" guides (Punta Engaño jeepneys).
+//
+// Same live-mutation pattern as src/data/terminals.js's replaceTerminals —
+// see src/lib/transitSync.js. Supabase's public.destinations table adds
+// source/verification tracking (supabase/migrations/004_destinations.sql)
+// that this hardcoded fallback array doesn't carry, since nothing client-
+// side reads those fields outside the admin dashboard.
 export const attractions = [
   {
     id: "magellans-cross",
@@ -128,4 +134,64 @@ export const attractions = [
     wikiTitle: "Mactan Shrine",
     nearestStopId: "ayala",
   },
+  // Added for student-relevant destinations + a heritage site not yet
+  // covered — real, verified locations (see PR/commit notes for sources:
+  // cebudailynews.inquirer.net/707255 (EduRank university rankings),
+  // en.wikipedia.org articles for each institution, casagorordomuseum.org).
+  // nearestStopId picks follow the same "closest reachable jump-off, not
+  // the destination itself" pattern as the rest of this file.
+  {
+    id: "usc-talamban",
+    name: "University of San Carlos – Talamban Campus",
+    location: "Nasipit, Talamban, Cebu City",
+    description: "Cebu's top-ranked university (8th nationally per EduRank), with its main science and engineering campus right in Talamban.",
+    icon: "ti-school",
+    category: "University",
+    wikiTitle: "University of San Carlos",
+    nearestStopId: "talamban",
+  },
+  {
+    id: "usjr-main",
+    name: "University of San Jose–Recoletos",
+    location: "Magallanes & P. Lopez Streets, Cebu City",
+    description: "A private Catholic university in the heart of downtown Cebu, run by the Augustinian Recollects.",
+    icon: "ti-school",
+    category: "University",
+    wikiTitle: "University of San Jose–Recoletos",
+    nearestStopId: "colon",
+  },
+  {
+    id: "cnu-main",
+    name: "Cebu Normal University",
+    location: "Osmeña Boulevard, Cebu City",
+    description: "A public university right on Osmeña Boulevard, a short walk from Fuente Osmeña Circle.",
+    icon: "ti-school",
+    category: "University",
+    wikiTitle: "Cebu Normal University",
+    nearestStopId: "fuente",
+  },
+  {
+    id: "up-cebu",
+    name: "University of the Philippines Cebu",
+    location: "Gorordo Avenue, Lahug, Cebu City",
+    description: "UP's Cebu campus, in the Lahug district near IT Park.",
+    icon: "ti-school",
+    category: "University",
+    wikiTitle: "University of the Philippines Cebu",
+    nearestStopId: "it-park",
+  },
+  {
+    id: "casa-gorordo",
+    name: "Casa Gorordo Museum",
+    location: "35 Eduardo Aboitiz St, Parian, Cebu City",
+    description: "A restored 1850s bahay-na-bato mansion in the historic Parian district, a National Historical Landmark since 1991.",
+    icon: "ti-home-2",
+    category: "Historical",
+    wikiTitle: "Casa Gorordo",
+    nearestStopId: "colon",
+  },
 ];
+
+export function replaceAttractions(newAttractions) {
+  attractions.splice(0, attractions.length, ...newAttractions);
+}
