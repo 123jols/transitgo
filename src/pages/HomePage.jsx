@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { addRoute, findRoutes, getPopularRoutes, getStops, searchDestinations, searchStops } from "../api/transit";
+import { addRoute, findRoutes, getPopularRoutes, getStops, resolveDestinationCandidates, searchDestinations, searchStops } from "../api/transit";
+import { fetchAiIntent } from "../api/ai";
+import { selectDisplayRoutes } from "../utils/routing";
 import { haversineDistanceKm, reverseGeocode, shortenAddress } from "../utils/geo";
 import RouteDetailsPage from "./RouteDetailsPage";
 import WeatherTip from "../components/WeatherTip";
@@ -74,10 +76,16 @@ export default function HomePage() {
   const grabEstimate = useGrabEstimate(from, to);
   const [fromSuggestions, setFromSuggestions] = useState([]);
   const [toSuggestions, setToSuggestions] = useState([]);
+  // AI-assisted destination search — only ever offered/used when the
+  // deterministic searchDestinations() above found nothing, and only ever
+  // resolves against resolveDestinationCandidates' real, verified place
+  // list (never a place the AI invented). See src/api/ai.js / api/ai/intent.js.
+  const [aiAsking, setAiAsking] = useState(false);
+  const [aiCandidates, setAiCandidates] = useState([]);
+  const [aiStatusMessage, setAiStatusMessage] = useState("");
   const [results, setResults] = useState([]);
   const [userType, setUserType] = useState(getStoredRiderType);
   const [routeFilter, setRouteFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("cheapest");
   const [recentSearches, setRecentSearches] = useState([]);
   const { savedTrips, saveTripToTrips, removeSavedTrip } = useSavedTrips();
   const [routeDetails, setRouteDetails] = useState(null);
@@ -210,35 +218,6 @@ export default function HomePage() {
     return `${Math.round((discounts[userType] || 0) * 100)}% ${userLabels[userType]} discount`;
   };
 
-  const getAiRouteScore = (route) => {
-    const fareScore = getDiscountedFare(route.fare) * 1.3;
-    const durationScore = route.duration * 1.1;
-    const transferScore = route.transfers * 22;
-    const typeBonus = route.type === "walk" ? -10 : route.type === "bus" ? 4 : 0;
-    return fareScore + durationScore + transferScore + typeBonus;
-  };
-
-  const getAiRecommendedRoute = (routes) => {
-    if (!routes.length) return null;
-    return routes.reduce((best, current) => {
-      return getAiRouteScore(current) < getAiRouteScore(best) ? current : best;
-    }, routes[0]);
-  };
-
-  const getAiRecommendationCopy = (route) => {
-    if (!route) return "";
-    if (route.transfers === 0 && route.duration <= 25) {
-      return "The AI recommends this no-transfer route as the clearest balance of speed and price.";
-    }
-    if (userType === "student" || userType === "pwd") {
-      return `Smart choice for ${userLabels[userType]} riders: low fare with an easy boarding experience.`;
-    }
-    if (route.type === "walk") {
-      return "A zero-fare connection that is ideal for short, direct travel.";
-    }
-    return "A balanced route with strong performance across cost and travel time.";
-  };
-
   const handleNewRouteInput = (field, value) => {
     setNewRouteInput((prev) => ({ ...prev, [field]: value }));
   };
@@ -319,6 +298,9 @@ export default function HomePage() {
     setToQuery(value);
     setTo(null);
     setToSuggestions(value ? searchDestinations(value) : []);
+    // A fresh edit invalidates whatever the AI search last found/said.
+    setAiCandidates([]);
+    setAiStatusMessage("");
   };
 
   // A destination search hit (stop, terminal, or attraction — see
@@ -335,6 +317,55 @@ export default function HomePage() {
     setFrom(stop);
     setFromQuery(stop.name);
     setFromSuggestions([]);
+  };
+
+  // Only ever called when the rider tapped "Ask AI" after the deterministic
+  // searchDestinations() above already found nothing for their exact text —
+  // this is a fallback for typos/phrasing ("jmall", "how do I get to X"),
+  // never the first thing tried. The AI (api/ai/intent.js) only extracts
+  // what the rider meant; resolveDestinationCandidates() then matches that
+  // against TransitGo's real, verified stops/terminals/destinations — if
+  // nothing scores high enough, this reports "not found" rather than
+  // guessing, exactly like the routing engine never invents a route.
+  const handleAskAi = async () => {
+    if (!toQuery.trim() || aiAsking) return;
+    setAiAsking(true);
+    setAiCandidates([]);
+    setAiStatusMessage("");
+
+    const result = await fetchAiIntent(toQuery, from?.name);
+
+    if (!result.available) {
+      setAiStatusMessage("AI search is unavailable right now — try a different search term instead.");
+      setAiAsking(false);
+      return;
+    }
+    if (result.intent === "chat") {
+      setAiStatusMessage("That doesn't look like a place to go — try naming a destination.");
+      setAiAsking(false);
+      return;
+    }
+
+    // If the rider named an explicit origin ("from Yati to Ayala"), try to
+    // resolve and apply it too — same real place-list, same confidence bar.
+    if (result.origin) {
+      const originMatches = resolveDestinationCandidates(result.origin, { limit: 1 });
+      if (originMatches.length && originMatches[0].confidence >= 0.75) {
+        selectFrom({ ...originMatches[0].stop, name: originMatches[0].label });
+      }
+    }
+
+    const destinationQuery = result.destination || toQuery;
+    const matches = resolveDestinationCandidates(destinationQuery);
+
+    if (matches.length === 0) {
+      setAiStatusMessage(`Couldn't find "${destinationQuery}" in TransitGo's Cebu coverage yet.`);
+    } else if (matches.length === 1 && matches[0].confidence >= 0.75) {
+      selectDestination(matches[0]);
+    } else {
+      setAiCandidates(matches);
+    }
+    setAiAsking(false);
   };
 
   // The known stop nearest a given GPS fix, or null if none are within
@@ -621,35 +652,27 @@ export default function HomePage() {
     setActiveTab("results");
   };
 
+  // `results` (from findRoutesBetween) already arrives compareTrips-sorted —
+  // filtering by transport type preserves that order, so selectDisplayRoutes
+  // below can rely on it without re-sorting.
   const filteredResults = results.filter((route) => {
     if (routeFilter === "all") return true;
     return route.type.toLowerCase() === routeFilter;
   });
 
-  const sortedResults = [...filteredResults].sort((a, b) => {
-    if (sortBy === "cheapest") {
-      return getDiscountedFare(a.fare) - getDiscountedFare(b.fare);
-    }
-    if (sortBy === "fastest") {
-      return a.duration - b.duration;
-    }
-    if (sortBy === "fewest") {
-      return a.transfers - b.transfers;
-    }
-    return 0;
-  });
-
-  const routeCount = sortedResults.length;
+  const routeCount = filteredResults.length;
   const hasSelection = Boolean(from && to);
-  const aiRecommendedRoute = getAiRecommendedRoute(sortedResults);
-  const aiRecommendationCopy = getAiRecommendationCopy(aiRecommendedRoute);
+  // The single BEST route plus a small set of genuinely meaningful
+  // alternatives — see selectDisplayRoutes' dominance filter (utils/routing.js)
+  // for why a merely-technically-valid-but-worse route doesn't show up here.
+  const { best: bestRoute, alternatives: alternativeRoutes } = selectDisplayRoutes(filteredResults);
 
-  // Top picks: fastest / cheapest / fewest-transfers, deduped so a route that
-  // wins multiple categories shows one card with multiple badges instead of repeats.
+  // Badges (Fastest/Cheapest/Fewest transfers) are computed over the
+  // alternatives only — the best route's own position already says it's the
+  // recommended pick, so it doesn't need a repeated badge.
   const topPickCategories = [
-    { label: "Fastest", icon: "ti-bolt", route: [...filteredResults].sort((a, b) => a.duration - b.duration)[0] },
-    { label: "Cheapest", icon: "ti-currency-peso", route: [...filteredResults].sort((a, b) => getDiscountedFare(a.fare) - getDiscountedFare(b.fare))[0] },
-    { label: "Fewest transfers", icon: "ti-arrows-shuffle", route: [...filteredResults].sort((a, b) => a.transfers - b.transfers)[0] },
+    { label: "Fastest", icon: "ti-bolt", route: [...alternativeRoutes].sort((a, b) => a.duration - b.duration)[0] },
+    { label: "Cheapest", icon: "ti-currency-peso", route: [...alternativeRoutes].sort((a, b) => getDiscountedFare(a.fare) - getDiscountedFare(b.fare))[0] },
   ];
   const topPickMap = new Map();
   topPickCategories.forEach(({ label, icon, route }) => {
@@ -722,7 +745,7 @@ export default function HomePage() {
     <div className="home-shell">
       {/* Full-screen map background */}
       <div className="home-map-layer">
-        <MapExplorer fullscreen showSearchOverlay={navTab === "explore"} onLocationFix={applyGpsFix} />
+        <MapExplorer fullscreen showSearchOverlay={false} onLocationFix={applyGpsFix} />
       </div>
 
       {/* Floating branding + theme toggle */}
@@ -738,11 +761,8 @@ export default function HomePage() {
         {navTab === "explore" && (
           <>
             <div className="explore-header">
-              <div className="explore-header-icon"><i className="ti ti-map-2"></i></div>
-              <div>
-                <h2 className="hero-headline explore-header-title">Explore</h2>
-                <p className="hero-subhead explore-header-subhead">Discover places and transportation around you.</p>
-              </div>
+              <h2 className="hero-headline explore-header-title">Explore</h2>
+              <p className="hero-subhead explore-header-subhead">Discover places and transportation around you.</p>
             </div>
 
             <div className="explore-search-field">
@@ -817,68 +837,120 @@ export default function HomePage() {
           <>
         {/* Headline and subhead */}
         <h2 className="hero-headline">Where are you going?</h2>
-        <p className="hero-subhead">Find routes · Live ETAs · Cebu</p>
+        <div className="hero-meta-pills">
+          <span className="hero-meta-pill"><span className="hero-meta-dot"></span>Live ETAs</span>
+          <span className="hero-meta-pill"><span className="hero-meta-dot"></span>Cebu</span>
+        </div>
 
-        {/* Search box - glassmorphic card */}
-        <div className="search-card">
-          <div className="search-field from-field">
-            <i className="ti ti-current-location"></i>
-            <div className="search-input-wrapper">
-              <input
-                type="text"
-                value={fromQuery}
-                onChange={handleFromChange}
-                placeholder="Your location"
-                className="search-input"
-                autoComplete="off"
-              />
-              <StopDropdown
-                suggestions={fromSuggestions}
-                onSelect={selectFrom}
-                open={fromSuggestions.length > 0}
-              />
+        {/* Route card: merged From/To with a connector (boarding dot ->
+            dashed line -> alighting pin) instead of two separate fields. */}
+        <div className="route-card">
+          <div className="route-row">
+            <div className="connector">
+              <div className="connector-dot"></div>
+              <div className="connector-line"></div>
+            </div>
+            <div className="route-field-input">
+              <span className="route-field-label">From</span>
+              <div className="route-field-input-wrapper">
+                <input
+                  type="text"
+                  value={fromQuery}
+                  onChange={handleFromChange}
+                  placeholder="Your location"
+                  className="route-field-text"
+                  autoComplete="off"
+                />
+                <StopDropdown
+                  suggestions={fromSuggestions}
+                  onSelect={selectFrom}
+                  open={fromSuggestions.length > 0}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="route-row">
+            <div className="connector">
+              <div className="connector-pin"></div>
+            </div>
+            <div className="route-field-input">
+              <span className="route-field-label">To</span>
+              <div className="route-field-input-wrapper">
+                <input
+                  type="text"
+                  value={toQuery}
+                  onChange={handleToChange}
+                  placeholder="Where to?"
+                  className="route-field-text"
+                  autoComplete="off"
+                />
+                <StopDropdown
+                  suggestions={toSuggestions}
+                  onSelect={selectDestination}
+                  open={toSuggestions.length > 0}
+                />
+              </div>
             </div>
           </div>
 
           <button
             type="button"
-            className="swap-button"
+            className="swap-fab"
             onClick={swapStops}
             disabled={!hasSelection || isSearching}
             title="Swap origin and destination"
           >
             <i className="ti ti-arrows-sort"></i>
           </button>
+        </div>
 
-          <div className="search-field to-field">
-            <i className="ti ti-map-pin"></i>
-            <div className="search-input-wrapper">
-              <input
-                type="text"
-                value={toQuery}
-                onChange={handleToChange}
-                placeholder="Where to?"
-                className="search-input"
-                autoComplete="off"
-              />
-              <StopDropdown
-                suggestions={toSuggestions}
-                onSelect={selectDestination}
-                open={toSuggestions.length > 0}
-              />
+        {toQuery.trim().length >= 2 && toSuggestions.length === 0 && !to && (
+            <div className="ai-destination-search">
+              {aiAsking ? (
+                <p className="ai-destination-status">
+                  <i className="ti ti-sparkles"></i> Asking AI…
+                </p>
+              ) : aiCandidates.length > 0 ? (
+                <div className="ai-destination-candidates">
+                  <p className="ai-destination-status">AI found these possible matches:</p>
+                  {aiCandidates.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="ai-destination-candidate"
+                      onClick={() => { selectDestination(c); setAiCandidates([]); }}
+                    >
+                      <i className="ti ti-map-pin"></i>
+                      <span className="ai-destination-candidate-text">
+                        <strong>{c.label}</strong>
+                        <small>{c.subtitle}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : aiStatusMessage ? (
+                <p className="ai-destination-status">{aiStatusMessage}</p>
+              ) : (
+                <button type="button" className="ai-destination-ask-button" onClick={handleAskAi}>
+                  <i className="ti ti-sparkles"></i> Can&apos;t find it? Ask AI about &quot;{toQuery.trim()}&quot;
+                </button>
+              )}
             </div>
-          </div>
+          )}
 
-          <select
-            value={userType}
-            onChange={(e) => setUserType(e.target.value)}
-            className="user-type-select"
-          >
-            <option value="regular">Regular</option>
-            <option value="student">Student</option>
-            <option value="pwd">PWD</option>
-            <option value="tourist">Tourist</option>
-          </select>
+          <div className="rider-segmented">
+            {RIDER_TYPES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`rider-segment${userType === t.id ? " active" : ""}`}
+                onClick={() => setUserType(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
 
           <button
             type="button"
@@ -886,9 +958,8 @@ export default function HomePage() {
             onClick={handleSearch}
             disabled={!hasSelection || isSearching}
           >
-            {isSearching ? "Searching…" : "Find Routes"}
+            {isSearching ? "Searching…" : "Find Routes"} <i className="ti ti-arrow-right"></i>
           </button>
-        </div>
 
         {locStatus === "locating" && (
           <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "6px 2px 0" }}>
@@ -924,7 +995,7 @@ export default function HomePage() {
           />
         )}
 
-        {/* Quick destination chips */}
+        {/* Popular routes */}
         {popularRoutes.length > 0 && (
           <div className="quick-chips-row">
             <p className="section-label">Popular routes</p>
@@ -934,11 +1005,14 @@ export default function HomePage() {
                   <button
                     key={`${route.from.id}-${route.to.id}`}
                     type="button"
-                    className="quick-chip"
+                    className="route-chip-card"
                     onClick={() => applyPopularRoute(route)}
                   >
-                    <i className="ti ti-sparkles"></i>
-                    <span>{route.from.name.split(" ")[0]} → {route.to.name.split(" ")[0]}</span>
+                    <span className="route-chip-card-icon"><i className="ti ti-sparkles"></i></span>
+                    <span className="route-chip-card-name">
+                      {route.from.name.split(" ")[0]} → {route.to.name.split(" ")[0]}
+                    </span>
+                    <span className="route-chip-card-fare">from ₱{getDiscountedFare(route.route.fare)}</span>
                   </button>
                 ))}
               </div>
@@ -1000,26 +1074,61 @@ export default function HomePage() {
 
       {activeTab === "results" && (
         <div className={`tab-content results-tab ${resultsAnimated ? "animated" : ""}`}>
-          {/* AI recommendation */}
-          {aiRecommendedRoute && !isSearching && (
+          {/* Best route — the single recommended pick per selectDisplayRoutes'
+              ranking (fewest transfers, then least walking, then fastest,
+              then cheapest, then simplest). A direct route always wins here
+              over a technically-valid-but-unnecessary transfer route. */}
+          {bestRoute && !isSearching && (
             <div className="ai-card">
               <div className="ai-header">
                 <div>
-                  <p className="section-label">AI Recommendation</p>
-                  <h3>{aiRecommendedRoute.label}</h3>
+                  <p className="section-label">Best Route</p>
+                  <h3>{bestRoute.label}</h3>
                 </div>
-                <span className="ai-badge">Recommended</span>
+                <span className="ai-badge">
+                  {bestRoute.transfers === 0
+                    ? "Direct"
+                    : `${bestRoute.transfers} transfer${bestRoute.transfers === 1 ? "" : "s"}`}
+                </span>
               </div>
-              <p className="ai-copy">{aiRecommendationCopy}</p>
+
+              <div className="best-route-board-row">
+                <div className="best-route-board-item">
+                  <span className="best-route-board-label"><i className="ti ti-circle-dot"></i> Board</span>
+                  <strong>{bestRoute.stops[0]}</strong>
+                </div>
+                <i className="ti ti-arrow-right best-route-board-arrow"></i>
+                <div className="best-route-board-item">
+                  <span className="best-route-board-label"><i className="ti ti-map-pin"></i> Get off</span>
+                  <strong>{bestRoute.stops[bestRoute.stops.length - 1]}</strong>
+                </div>
+              </div>
+
+              {bestRoute.stops.length > 2 && (
+                <div className="best-route-stops">
+                  <p className="section-label">Stops</p>
+                  <div className="best-route-stops-list">
+                    {bestRoute.stops.map((stopName, i) => (
+                      <div key={`${stopName}-${i}`} className="best-route-stop-row">
+                        <span className={`best-route-stop-name${i === 0 || i === bestRoute.stops.length - 1 ? " endpoint" : ""}`}>
+                          {stopName}
+                        </span>
+                        {i < bestRoute.stops.length - 1 && <i className="ti ti-arrow-down best-route-stop-arrow"></i>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="ai-meta">
-                <span>₱{getDiscountedFare(aiRecommendedRoute.fare)}</span>
-                <span>{aiRecommendedRoute.duration} min</span>
-                <span>{aiRecommendedRoute.transfers} transfer{aiRecommendedRoute.transfers === 1 ? "" : "s"}</span>
+                <span>₱{getDiscountedFare(bestRoute.fare)}</span>
+                <span>{bestRoute.duration} min</span>
+                <span>{bestRoute.transfers} transfer{bestRoute.transfers === 1 ? "" : "s"}</span>
               </div>
               <button
                 type="button"
                 className="ai-view-button"
-                onClick={() => openRouteDetails(aiRecommendedRoute)}
+                onClick={() => openRouteDetails(bestRoute)}
               >
                 View details
               </button>
@@ -1041,18 +1150,6 @@ export default function HomePage() {
                 <option value="walk">Walk</option>
               </select>
             </div>
-            <div className="control-group">
-              <label>Sort</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="control-select"
-              >
-                <option value="cheapest">Cheapest</option>
-                <option value="fastest">Fastest</option>
-                <option value="fewest">Fewest transfers</option>
-              </select>
-            </div>
           </div>
 
           {/* Results display */}
@@ -1063,7 +1160,7 @@ export default function HomePage() {
               </div>
               <p>Finding the best routes...</p>
             </div>
-          ) : sortedResults.length === 0 ? (
+          ) : filteredResults.length === 0 ? (
             <div className="empty-state">
               <i className="ti ti-search"></i>
               <p>{hasSelection ? "No routes found" : "No results yet"}</p>
@@ -1073,16 +1170,12 @@ export default function HomePage() {
                   : "Enter a location and destination to search"}
               </span>
             </div>
-          ) : (
+          ) : alternativeRoutes.length > 0 && (
             <div className="routes-list">
-              <p className="result-count">{routeCount} route{routeCount === 1 ? "" : "s"} found</p>
-              {sortedResults.map((route) => {
+              <p className="result-count">Other options</p>
+              {alternativeRoutes.map((route) => {
                 const pick = topPickMap.get(route.id);
-                const isAiPick = aiRecommendedRoute?.id === route.id;
-                const badges = [
-                  ...(pick ? pick.badges : []),
-                  ...(isAiPick ? [{ label: "AI Pick", icon: "ti-sparkles" }] : []),
-                ];
+                const badges = pick ? pick.badges : [];
                 return (
                 <div key={route.id} className="route-result-card">
                   <div className="route-result-header">

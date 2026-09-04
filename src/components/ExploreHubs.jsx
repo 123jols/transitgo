@@ -1,5 +1,4 @@
-import { haversineDistanceKm } from "../utils/geo";
-import ExplorePlaceCard from "./ExplorePlaceCard";
+import { haversineDistanceKm, formatDistance } from "../utils/geo";
 
 // "Transportation Hubs" — the full terminal directory (not capped to a
 // nearby radius the way ExploreNearby is), sorted by distance when a fix is
@@ -21,19 +20,22 @@ export default function ExploreHubs({ stops, terminals, myCoords, onDirections, 
       </div>
       <div className="chips-scroll-wrapper">
         <div className="chips-scroll explore-hubs-scroll">
-          {sorted.map((t) => (
-            <div key={t.id} className="explore-hub-card">
-              <ExplorePlaceCard
-                icon="ti-bus-stop"
-                name={t.name}
-                category="Terminal"
-                address={t.location}
-                distanceKm={myCoords ? haversineDistanceKm(myCoords, t) : null}
-                onDirections={() => t.stopId && onDirections(stops.find((s) => s.id === t.stopId))}
+          {sorted.map((t) => {
+            const distanceKm = myCoords ? haversineDistanceKm(myCoords, t) : null;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                className="explore-hub-tile"
+                onClick={() => t.stopId && onDirections(stops.find((s) => s.id === t.stopId))}
                 disabled={!t.stopId}
-              />
-            </div>
-          ))}
+              >
+                <span className="explore-hub-tile-icon"><i className="ti ti-bus-stop"></i></span>
+                <span className="explore-hub-tile-name">{t.name}</span>
+                {distanceKm != null && <span className="explore-hub-tile-distance">{formatDistance(distanceKm)}</span>}
+              </button>
+            );
+          })}
         </div>
         <div className="chips-fade" aria-hidden="true"></div>
       </div>

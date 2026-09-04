@@ -14,6 +14,18 @@ import { RIDER_TYPES, getStoredRiderType, setStoredRiderType } from "../data/rid
 
 const NAME_STORAGE_KEY = "transitgo-display-name";
 
+// Up to two initials from a display name, for the gradient avatar — falls
+// back to a person icon (handled by the caller) when there's no name yet.
+function getInitials(name) {
+  if (!name || !name.trim()) return "";
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("");
+}
+
 export default function ProfilePage({ onNavigate }) {
   const [view, setView] = useState("main");
   const { theme } = useTheme();
@@ -78,7 +90,10 @@ export default function ProfilePage({ onNavigate }) {
 
       <div className="profile-identity">
         <div className="profile-avatar">
-          <i className="ti ti-user"></i>
+          {(() => {
+            const initials = getInitials(user ? profile?.fullName : displayName);
+            return initials ? <span className="profile-avatar-initials">{initials}</span> : <i className="ti ti-user"></i>;
+          })()}
         </div>
         <div className="profile-identity-info">
           {user ? (
@@ -119,16 +134,17 @@ export default function ProfilePage({ onNavigate }) {
             <i className="ti ti-pencil"></i>
           </button>
         )}
-        <button
-          type="button"
-          className="sos-button"
-          onClick={() => setShowSosModal(true)}
-          title="Emergency SOS"
-        >
-          <i className="ti ti-alert-triangle"></i>
-          SOS
-        </button>
       </div>
+
+      <button
+        type="button"
+        className="sos-button"
+        onClick={() => setShowSosModal(true)}
+        title="Emergency SOS"
+      >
+        <i className="ti ti-alert-triangle"></i>
+        SOS — Emergency
+      </button>
 
       {showSosModal && <SosModal onClose={() => setShowSosModal(false)} />}
 

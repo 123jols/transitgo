@@ -12,9 +12,9 @@ export default function TripsPage({ trips, onOpenTrip, onRemoveTrip }) {
       ) : (
         <div className="recent-section">
           <p className="section-label">Saved trips</p>
-          <div className="recent-card">
+          <div className="trips-list">
             {trips.map((trip) => (
-              <div key={trip.id} className="trip-row">
+              <div key={trip.id} className="trip-card">
                 <button type="button" className="trip-row-main" onClick={() => onOpenTrip(trip)}>
                   <div className="recent-icon">
                     <i className="ti ti-bookmark"></i>
