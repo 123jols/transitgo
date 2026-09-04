@@ -25,10 +25,12 @@ function AttractionCard({ spot, stops, myCoords, onViewRoute, index }) {
           <p className="attraction-name">{spot.name}</p>
           {distanceKm != null && <span className="attraction-distance">{formatDistance(distanceKm)}</span>}
         </div>
-        <p className="attraction-location">
-          <i className="ti ti-map-pin"></i> {spot.location}
+        <div className="attraction-meta">
+          <p className="attraction-location">
+            <i className="ti ti-map-pin"></i> {spot.location}
+          </p>
           {spot.category && <span className="attraction-category-tag">{spot.category}</span>}
-        </p>
+        </div>
         <p className="attraction-description">{spot.description}</p>
         <button
           type="button"

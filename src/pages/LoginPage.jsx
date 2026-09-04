@@ -81,6 +81,7 @@ export default function LoginPage({ onBack, onGuest, recoveryMode }) {
   // Sign-in stays a single simple form — only sign-up needs the full wizard.
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
 
   // "Forgot password?" — a sub-flow off of sign-in, not a mode of its own.
   const [forgotMode, setForgotMode] = useState(false);
@@ -104,7 +105,7 @@ export default function LoginPage({ onBack, onGuest, recoveryMode }) {
     setSubmitError("");
     setSubmitting(true);
     try {
-      await signIn(signInEmail.trim(), signInPassword);
+      await signIn(signInEmail.trim(), signInPassword, rememberMe);
       // In gate mode (no onBack) the auth state change alone swaps this
       // page out for the app; onBack is only for the Profile-page entry
       // point, which needs to be told to close explicitly.
@@ -378,9 +379,19 @@ export default function LoginPage({ onBack, onGuest, recoveryMode }) {
                 placeholder="Your password"
                 autoComplete="current-password"
               />
-              <button type="button" className="auth-forgot-link" onClick={openForgotPassword}>
-                Forgot password?
-              </button>
+              <div className="auth-options-row">
+                <label className="auth-remember-row">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <span>Remember me</span>
+                </label>
+                <button type="button" className="auth-forgot-link" onClick={openForgotPassword}>
+                  Forgot password?
+                </button>
+              </div>
               {submitError && <span className="expense-field-error">{submitError}</span>}
               <button type="submit" className="auth-submit-btn" disabled={submitting}>
                 {submitting ? "Please wait…" : "Sign In"}

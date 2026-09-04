@@ -99,6 +99,7 @@ export default function CameraNavView({ myLocation, destination, distanceKm }) {
 
       {!cameraError && bearing != null && (
         <div className="nav-ar-arrow-wrap">
+          <div className="nav-ar-arrow-ring" />
           <div className="nav-ar-arrow" style={{ transform: `rotate(${arrowRotation}deg)` }}>
             <i className="ti ti-navigation"></i>
           </div>
@@ -109,7 +110,10 @@ export default function CameraNavView({ myLocation, destination, distanceKm }) {
       )}
 
       {!cameraError && distanceKm != null && (
-        <div className="nav-ar-distance">{formatDistance(distanceKm)} to go</div>
+        <div className="nav-ar-distance">
+          <i className="ti ti-map-pin"></i>
+          {formatDistance(distanceKm)} to go
+        </div>
       )}
     </div>
   );

@@ -1,38 +1,33 @@
 import { formatDistance } from "../utils/geo";
 
-// Shared row card for Explore's browsing sections (Nearby You, Transportation
-// Hubs, search results) — one presentational component instead of three
-// near-identical card renderers, all built on the same visual language as
-// TerminalsPage's existing `.terminal-card`.
+// Shared row for Explore's browsing sections (Nearby You, Transportation
+// Hubs, search results) — a single clean list row instead of a card stacked
+// with a separate footer button, so the row itself is the tap target.
 export default function ExplorePlaceCard({ icon, name, category, address, distanceKm, onDirections, disabled }) {
+  const metaParts = [category, address].filter(Boolean);
+
   return (
-    <div className="terminal-card explore-place-card">
-      <div className="terminal-card-header">
-        <div className="terminal-card-icon">
-          <i className={`ti ${icon || "ti-map-pin"}`}></i>
-        </div>
-        <div className="terminal-card-title">
-          <p className="terminal-card-name">{name}</p>
-          <p className="terminal-card-location">
-            <i className="ti ti-map-pin"></i> {address}
-          </p>
-        </div>
-        {distanceKm != null && (
-          <span className="terminal-card-distance">{formatDistance(distanceKm)}</span>
+    <button type="button" className="place-card" onClick={onDirections} disabled={disabled}>
+      <span className="place-card-icon">
+        <i className={`ti ${icon || "ti-map-pin"}`}></i>
+      </span>
+      <span className="place-card-body">
+        <span className="place-card-name">{name}</span>
+        {metaParts.length > 0 && (
+          <span className="place-card-meta">
+            {metaParts.map((part, i) => (
+              <span key={i}>
+                {i > 0 && <span className="place-card-dot">·</span>}
+                {part}
+              </span>
+            ))}
+          </span>
         )}
-      </div>
-      <div className="explore-place-card-footer">
-        {category && <span className="attraction-category-tag">{category}</span>}
-        <button
-          type="button"
-          className="explore-place-directions"
-          onClick={onDirections}
-          disabled={disabled}
-        >
-          <i className="ti ti-route"></i>
-          Directions
-        </button>
-      </div>
-    </div>
+      </span>
+      <span className="place-card-side">
+        {distanceKm != null && <span className="place-card-distance">{formatDistance(distanceKm)}</span>}
+        <i className="ti ti-chevron-right place-card-chevron"></i>
+      </span>
+    </button>
   );
 }

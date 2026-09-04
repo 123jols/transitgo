@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { supabase, isSupabaseConfigured, setRememberMe } from "../lib/supabaseClient";
 
 const AuthContext = createContext(null);
 
@@ -59,8 +59,12 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   };
 
-  const signIn = async (email, password) => {
+  const signIn = async (email, password, rememberMe = true) => {
     if (!isSupabaseConfigured) throw new Error("Cloud sync isn't configured yet.");
+    // Must be set before signInWithPassword — that call is what writes the
+    // session to storage, and the custom storage adapter (supabaseClient.js)
+    // reads this flag at write time to pick localStorage vs sessionStorage.
+    setRememberMe(rememberMe);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
