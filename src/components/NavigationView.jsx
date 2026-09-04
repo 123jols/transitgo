@@ -95,6 +95,13 @@ export default function NavigationView({ destination, onClose }) {
     map.panTo([lat, lon]);
   }
 
+  function zoomBy(delta) {
+    const map = mapRef.current;
+    if (!map) return;
+    userInteractedRef.current = true;
+    map.setZoom(map.getZoom() + delta);
+  }
+
   // Live GPS tracking — same watchPosition pattern as MapExplorer's "My
   // Location" dot, just driving a route re-fetch too instead of only a marker.
   useEffect(() => {
@@ -177,7 +184,7 @@ export default function NavigationView({ destination, onClose }) {
 
     (async () => {
       try {
-        const url = `https://router.project-osrm.org/route/v1/foot/${myLocation.lon},${myLocation.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`;
+        const url = `https://router.project-osrm.org/route/v1/foot/${myLocation.lon},${myLocation.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson&steps=true`;
         const res = await fetch(url);
         const data = await res.json();
         if (cancelled || data.code !== "Ok" || !data.routes?.length) return;
@@ -191,13 +198,14 @@ export default function NavigationView({ destination, onClose }) {
         setRouteInfo({
           distanceKm: leg.distance / 1000,
           etaMinutes: Math.max(1, Math.round(leg.duration / 60)),
+          steps: leg.legs?.[0]?.steps || [],
         });
       } catch {
         // Fall back to the straight-line estimate already shown; the route
         // line just won't update this tick.
         if (!cancelled) {
           const km = haversineDistanceKm(myLocation, destination);
-          setRouteInfo({ distanceKm: km, etaMinutes: walkingMinutes(km) });
+          setRouteInfo({ distanceKm: km, etaMinutes: walkingMinutes(km), steps: [] });
         }
       }
     })();
@@ -231,60 +239,86 @@ export default function NavigationView({ destination, onClose }) {
           <p className="nav-view-title-label">Walking to</p>
           <p className="nav-view-title-name">{destination.name}</p>
         </div>
-        <button
-          type="button"
-          className="nav-view-mode-toggle"
-          onClick={() => setViewMode((m) => (m === "map" ? "camera" : "map"))}
-          title={viewMode === "map" ? "Switch to AR camera view" : "Switch to map view"}
-        >
-          <i className={`ti ${viewMode === "map" ? "ti-camera" : "ti-map-2"}`}></i>
-        </button>
-      </div>
-
-      {viewMode === "camera" && (
-        <CameraNavView
-          myLocation={myLocation}
-          destination={destination}
-          distanceKm={routeInfo?.distanceKm}
-        />
-      )}
-
-      {/* Kept mounted (just hidden) rather than unmounted when the camera
-          view is active — the Leaflet map instance and GPS-driven effects
-          above are set up once on mount, not re-created on view-mode
-          toggles, so tearing this div down would orphan them. */}
-      <div className="nav-view-map-wrap" style={viewMode === "camera" ? { display: "none" } : undefined}>
-        <div className="nav-view-map" ref={containerRef} />
-
-        {myLocation && (
+        <div className="nav-view-topbar-actions">
           <button
             type="button"
-            className="my-location-button nav-view-recenter"
-            onClick={() => centerOn(myLocation.lat, myLocation.lon)}
-            title="Recenter on me"
+            className="nav-view-external-top"
+            onClick={() => openWalkingDirections(destination.lat, destination.lon)}
+            title="Open in Google Maps instead"
           >
-            <i className="ti ti-current-location"></i>
+            <i className="ti ti-external-link"></i>
           </button>
+          <button
+            type="button"
+            className="nav-view-mode-toggle"
+            onClick={() => setViewMode((m) => (m === "map" ? "camera" : "map"))}
+            title={viewMode === "map" ? "Switch to AR camera view" : "Switch to map view"}
+          >
+            <i className={`ti ${viewMode === "map" ? "ti-camera" : "ti-map-2"}`}></i>
+          </button>
+        </div>
+      </div>
+
+      <div className={`nav-view-body ${viewMode === "camera" ? "nav-view-body-ar" : ""}`}>
+        {viewMode === "camera" && (
+          <CameraNavView
+            myLocation={myLocation}
+            destination={destination}
+            distanceKm={routeInfo?.distanceKm}
+            steps={routeInfo?.steps}
+          />
         )}
 
-        {(locStatus === "denied" || locStatus === "blocked" || locStatus === "unsupported") && (
-          <div className="my-location-banner nav-view-banner">
-            <i className="ti ti-map-pin-off"></i>
-            <div className="my-location-banner-text">
-              <span>Location access is off</span>
-              <small>
-                {locStatus === "unsupported"
-                  ? "This device doesn't support live location."
-                  : locStatus === "blocked"
-                    ? "Enable location for this site in your browser settings."
-                    : "Turn on location to see live turn-by-turn guidance."}
-              </small>
-            </div>
-            {locStatus === "denied" && (
-              <button type="button" onClick={retryLocation}>Enable</button>
+        {/* Kept mounted (just resized, not unmounted) when the camera view
+            takes over — the Leaflet map instance and GPS-driven effects
+            above are set up once on mount, not re-created on view-mode
+            toggles, so tearing this div down would orphan them. In camera
+            mode it docks as a live route strip under the AR feed instead of
+            disappearing entirely, echoing the little "you are here" map
+            turn-by-turn apps keep on screen alongside the camera. */}
+        <div className="nav-view-map-wrap">
+          <div className="nav-view-map" ref={containerRef} />
+
+          <div className="nav-view-map-controls">
+            {myLocation && (
+              <button
+                type="button"
+                className="nav-view-recenter"
+                onClick={() => centerOn(myLocation.lat, myLocation.lon)}
+              >
+                <i className="ti ti-current-location"></i>
+                Re-center
+              </button>
             )}
+            <div className="nav-view-zoom">
+              <button type="button" onClick={() => zoomBy(1)} title="Zoom in">
+                <i className="ti ti-plus"></i>
+              </button>
+              <button type="button" onClick={() => zoomBy(-1)} title="Zoom out">
+                <i className="ti ti-minus"></i>
+              </button>
+            </div>
           </div>
-        )}
+
+          {(locStatus === "denied" || locStatus === "blocked" || locStatus === "unsupported") && (
+            <div className="my-location-banner nav-view-banner">
+              <i className="ti ti-map-pin-off"></i>
+              <div className="my-location-banner-text">
+                <span>Location access is off</span>
+                <small>
+                  {locStatus === "unsupported"
+                    ? "This device doesn't support live location."
+                    : locStatus === "blocked"
+                      ? "Enable location for this site in your browser settings."
+                      : "Turn on location to see live turn-by-turn guidance."}
+                </small>
+              </div>
+              {locStatus === "denied" && (
+                <button type="button" onClick={retryLocation}>Enable</button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {arrived ? (
@@ -298,6 +332,9 @@ export default function NavigationView({ destination, onClose }) {
         </div>
       ) : (
         <div className="nav-view-bottom">
+          <div className="nav-view-walker">
+            <i className="ti ti-walk"></i>
+          </div>
           <div className="nav-view-stat">
             <p className="nav-view-stat-value">
               {routeInfo ? formatDistance(routeInfo.distanceKm) : locStatus === "locating" ? "…" : "--"}
@@ -311,14 +348,19 @@ export default function NavigationView({ destination, onClose }) {
             </p>
             <p className="nav-view-stat-label">Walk time</p>
           </div>
-          <button
-            type="button"
-            className="nav-view-external"
-            onClick={() => openWalkingDirections(destination.lat, destination.lon)}
-            title="Open in Google Maps instead"
-          >
-            <i className="ti ti-external-link"></i>
-          </button>
+          <div className="nav-view-stat-divider" />
+          <div className="nav-view-stat">
+            <p className="nav-view-stat-value">
+              {routeInfo
+                ? new Date(Date.now() + routeInfo.etaMinutes * 60000).toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : locStatus === "locating" ? "…" : "--"}
+            </p>
+            <p className="nav-view-stat-label">ETA</p>
+          </div>
+          <button type="button" className="nav-view-end-trip" onClick={onClose}>End Trip</button>
         </div>
       )}
     </div>

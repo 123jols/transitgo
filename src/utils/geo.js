@@ -66,6 +66,33 @@ export function compassLabel(bearingDeg) {
   return COMPASS_LABELS[Math.round(bearingDeg / 45) % 8];
 }
 
+const TURN_MODIFIER_TEXT = {
+  left: "Turn left",
+  right: "Turn right",
+  "slight left": "Slight left",
+  "slight right": "Slight right",
+  "sharp left": "Sharp left",
+  "sharp right": "Sharp right",
+  uturn: "Make a U-turn",
+  straight: "Continue straight",
+};
+
+// Human-readable text for an OSRM route step's `maneuver` object — covers
+// the maneuver.type values the foot profile actually emits (turn, depart,
+// arrive, continue/new name/merge/fork/end of road share the same
+// left/right modifier vocabulary, roundabouts are rare on foot routes but
+// handled for completeness). Falls back to "Continue straight" for any
+// type/modifier OSRM adds that this doesn't know about yet, rather than
+// showing nothing.
+export function describeManeuver(maneuver) {
+  if (!maneuver) return "Continue straight";
+  const { type, modifier } = maneuver;
+  if (type === "depart") return "Head out";
+  if (type === "arrive") return "You've arrived";
+  if (type === "roundabout" || type === "rotary" || type === "roundabout turn") return "Enter the roundabout";
+  return TURN_MODIFIER_TEXT[modifier] || "Continue straight";
+}
+
 // Turns a GPS fix into a human-readable address via Nominatim's public
 // reverse-geocoding endpoint (the same OSM service MapExplorer already uses
 // for its own pins). Throws on network failure or an empty result so

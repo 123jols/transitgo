@@ -5757,6 +5757,27 @@ button:active {
   color: var(--text-primary);
 }
 
+/* Holds CameraNavView (AR mode only) plus the Leaflet map — both flex
+   children so the map docks as a smaller live-route strip under the camera
+   feed instead of disappearing while AR is active. In plain map mode
+   CameraNavView isn't rendered at all, so the map is this container's only
+   child and naturally fills it via flex: 1 below. */
+.nav-view-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.nav-view-body-ar .nav-ar {
+  flex: 1.3;
+}
+
+.nav-view-body-ar .nav-view-map-wrap {
+  flex: 1;
+  border-top: 1px solid rgba(0, 0, 0, 0.35);
+}
+
 .nav-view-map-wrap {
   position: relative;
   flex: 1;
@@ -5768,20 +5789,76 @@ button:active {
   inset: 0;
 }
 
+/* Wrapper is click-through so the map underneath stays draggable; the
+   recenter pill and zoom stack inside opt back into pointer-events. */
+.nav-view-map-controls {
+  position: absolute;
+  inset: 0;
+  /* clears Leaflet's own panes — see .my-location-button's z-index comment */
+  z-index: 900;
+  pointer-events: none;
+}
+
 .nav-view-recenter {
-  top: 16px;
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: none;
+  background: var(--bg-surface);
+  color: var(--accent-primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(var(--shadow-rgb), 0.18);
+}
+
+.nav-view-recenter i {
+  font-size: 15px;
+}
+
+.nav-view-zoom {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(var(--shadow-rgb), 0.18);
+}
+
+.nav-view-zoom button {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-view-zoom button:first-child {
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.14);
 }
 
 .nav-view-banner {
   top: 16px;
-  right: 68px;
+  right: 16px;
 }
 
 .nav-view-bottom {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px 20px calc(env(safe-area-inset-bottom) + 16px);
+  gap: 10px;
+  padding: 14px 16px calc(env(safe-area-inset-bottom) + 14px);
   background: var(--bg-surface);
   border-top: 1px solid rgba(var(--border-rgb), 0.10);
   box-shadow: 0 -6px 20px rgba(var(--shadow-rgb), 0.10);
@@ -5795,9 +5872,10 @@ button:active {
 
 .nav-view-stat-value {
   margin: 0;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 800;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .nav-view-stat-label {
@@ -5812,19 +5890,30 @@ button:active {
   background: rgba(var(--border-rgb), 0.14);
 }
 
-.nav-view-external {
-  margin-left: auto;
+.nav-view-walker {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: none;
-  background: rgba(var(--accent-primary-rgb), 0.10);
+  background: rgba(var(--accent-primary-rgb), 0.14);
   color: var(--accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 19px;
+}
+
+.nav-view-end-trip {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1.5px solid #e53935;
+  background: transparent;
+  color: #e53935;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .nav-view-arrived {
@@ -5863,8 +5952,29 @@ button:active {
   font-weight: 700;
 }
 
-.nav-view-mode-toggle {
+.nav-view-topbar-actions {
   margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-view-external-top {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-surface-alt);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.nav-view-mode-toggle {
   width: 38px;
   height: 38px;
   flex-shrink: 0;
@@ -5965,60 +6075,83 @@ button:active {
   font-weight: 600;
 }
 
-.nav-ar-arrow-wrap {
+.nav-ar-guide {
   position: absolute;
   z-index: 2;
-  top: 50%;
+  top: 44%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
-/* A static reticle ring plus a slow outward pulse behind the arrow signal
-   "this is live tracking", the same visual language as the my-location dot
-   pulse used on the map view — so the arrow doesn't read as a static icon. */
-.nav-ar-arrow-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  border: 2px solid rgba(var(--accent-primary-rgb), 0.45);
-  transform: translate(-50%, -50%) scale(1);
-  animation: navArArrowPulse 2.4s ease-out infinite;
-}
-
-@keyframes navArArrowPulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.55);
-    opacity: 0;
-  }
-}
-
-.nav-ar-arrow {
+/* Three stacked chevrons, fading from faint white to solid accent green
+   top-to-bottom, rotated together as one unit — a "tunnel" pointer that
+   reads as direction-of-travel rather than a single static icon. */
+.nav-ar-chevrons {
   position: relative;
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  background: linear-gradient(155deg, rgba(var(--accent-primary-rgb), 1), rgba(var(--accent-primary-rgb), 0.82));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+  width: 84px;
+  height: 86px;
   transition: transform 180ms linear;
 }
 
-.nav-ar-arrow i {
+.nav-ar-chevrons i {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.nav-ar-chevron-1 {
+  top: 0;
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.nav-ar-chevron-2 {
+  top: 18px;
   font-size: 34px;
-  color: #04170a;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.nav-ar-chevron-3 {
+  top: 40px;
+  font-size: 44px;
+  color: var(--accent-primary);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+}
+
+.nav-ar-instruction {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 20, 14, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+}
+
+.nav-ar-instruction i {
+  font-size: 20px;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.nav-ar-instruction-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.nav-ar-instruction-sub {
+  margin: 1px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .nav-ar-hint {
@@ -6032,6 +6165,30 @@ button:active {
   font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.nav-ar-torch {
+  position: absolute;
+  z-index: 2;
+  top: 96px;
+  right: 16px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 20, 14, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+}
+
+.nav-ar-torch.is-on {
+  background: var(--accent-primary);
+  color: #04170a;
 }
 
 .nav-ar-distance {
@@ -6060,12 +6217,7 @@ button:active {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-ar-arrow {
+  .nav-ar-chevrons {
     transition: none;
-  }
-
-  .nav-ar-arrow-ring {
-    animation: none;
-    opacity: 0.5;
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { bearingTo, compassLabel, formatDistance } from "../utils/geo";
+import { bearingTo, compassLabel, describeManeuver, formatDistance, haversineDistanceKm } from "../utils/geo";
 
 // iOS 13+ gates device-motion/orientation events behind an explicit,
 // tap-triggered permission prompt; every other browser exposes them
@@ -10,18 +10,27 @@ const NEEDS_IOS_MOTION_PERMISSION =
   typeof window.DeviceOrientationEvent !== "undefined" &&
   typeof window.DeviceOrientationEvent.requestPermission === "function";
 
-// AR-style walking guidance: a live rear-camera feed with a directional
-// arrow overlaid on top, rotated by (bearing to destination) - (device
-// compass heading) so the arrow points at the stop regardless of which way
-// the rider is currently facing — Google Maps "Live View", minus street
-// imagery matching (this app has no such model, just geometry).
-export default function CameraNavView({ myLocation, destination, distanceKm }) {
+// Once the rider is within this radius of a route step's *end* (i.e. the
+// next step's maneuver point), that next instruction takes over — loose
+// enough to tolerate ordinary GPS drift without skipping a turn early.
+const STEP_ADVANCE_RADIUS_KM = 0.015;
+
+// AR-style walking guidance: a live rear-camera feed with a chevron stack
+// overlaid on top, rotated by (bearing to the next route point) - (device
+// compass heading) so it points the right way regardless of which way the
+// rider is currently facing — plus, when `steps` (an OSRM route leg's
+// turn-by-turn steps) is available, a live "Turn left / Continue straight"
+// instruction card that advances as the rider reaches each maneuver.
+export default function CameraNavView({ myLocation, destination, distanceKm, steps }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const headingHandlerRef = useRef(null);
   const [cameraError, setCameraError] = useState(null);
   const [heading, setHeading] = useState(null);
   const [needsCompassTap, setNeedsCompassTap] = useState(NEEDS_IOS_MOTION_PERMISSION);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -33,6 +42,8 @@ export default function CameraNavView({ myLocation, destination, distanceKm }) {
       .then((stream) => {
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
+        const track = stream.getVideoTracks()[0];
+        setTorchSupported(!!track?.getCapabilities?.().torch);
       })
       .catch(() => setCameraError("Camera access was denied. Allow it in your browser settings to use AR view."));
 
@@ -75,7 +86,45 @@ export default function CameraNavView({ myLocation, destination, distanceKm }) {
       .catch(() => {});
   }
 
-  const bearing = myLocation ? bearingTo(myLocation, destination) : null;
+  function toggleTorch() {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    track
+      .applyConstraints({ advanced: [{ torch: next }] })
+      .then(() => setTorchOn(next))
+      .catch(() => {});
+  }
+
+  // A fresh `steps` array means a newly (re-)fetched route — start over
+  // from its first step rather than indexing into it with a stale offset.
+  useEffect(() => {
+    setStepIndex(0);
+  }, [steps]);
+
+  const hasSteps = Array.isArray(steps) && steps.length > 0;
+  const clampedIndex = hasSteps ? Math.min(stepIndex, steps.length - 1) : 0;
+  const currentStep = hasSteps ? steps[clampedIndex] : null;
+  const nextStep = hasSteps && clampedIndex + 1 < steps.length ? steps[clampedIndex + 1] : null;
+  const nextPoint = nextStep
+    ? { lat: nextStep.maneuver.location[1], lon: nextStep.maneuver.location[0] }
+    : destination;
+
+  // Advance to the next instruction once the rider is close enough to this
+  // step's end point (which is where the next step's maneuver happens).
+  useEffect(() => {
+    if (!myLocation || !nextStep) return;
+    const pt = { lat: nextStep.maneuver.location[1], lon: nextStep.maneuver.location[0] };
+    if (haversineDistanceKm(myLocation, pt) <= STEP_ADVANCE_RADIUS_KM) {
+      setStepIndex((i) => i + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLocation, nextStep]);
+
+  const stepRemainingKm = hasSteps && myLocation && nextStep ? haversineDistanceKm(myLocation, nextPoint) : null;
+  const instructionText = hasSteps ? describeManeuver(currentStep?.maneuver) : null;
+
+  const bearing = myLocation ? bearingTo(myLocation, nextPoint) : null;
   const hasHeading = heading != null;
   const arrowRotation = bearing != null && hasHeading ? bearing - heading : 0;
 
@@ -97,12 +146,37 @@ export default function CameraNavView({ myLocation, destination, distanceKm }) {
         </button>
       )}
 
+      {!cameraError && torchSupported && (
+        <button
+          type="button"
+          className={`nav-ar-torch ${torchOn ? "is-on" : ""}`}
+          onClick={toggleTorch}
+          title={torchOn ? "Turn off flashlight" : "Turn on flashlight"}
+        >
+          <i className={`ti ${torchOn ? "ti-flashlight-off" : "ti-flashlight"}`}></i>
+        </button>
+      )}
+
       {!cameraError && bearing != null && (
-        <div className="nav-ar-arrow-wrap">
-          <div className="nav-ar-arrow-ring" />
-          <div className="nav-ar-arrow" style={{ transform: `rotate(${arrowRotation}deg)` }}>
-            <i className="ti ti-navigation"></i>
+        <div className="nav-ar-guide">
+          <div className="nav-ar-chevrons" style={{ transform: `rotate(${arrowRotation}deg)` }}>
+            <i className="ti ti-chevron-up nav-ar-chevron-1"></i>
+            <i className="ti ti-chevron-up nav-ar-chevron-2"></i>
+            <i className="ti ti-chevron-up nav-ar-chevron-3"></i>
           </div>
+
+          {instructionText && (
+            <div className="nav-ar-instruction">
+              <i className="ti ti-navigation"></i>
+              <div>
+                <p className="nav-ar-instruction-title">{instructionText}</p>
+                {stepRemainingKm != null && (
+                  <p className="nav-ar-instruction-sub">for {formatDistance(stepRemainingKm)}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {!hasHeading && !needsCompassTap && (
             <p className="nav-ar-hint">Can't read your compass — head {compassLabel(bearing)}</p>
           )}
@@ -112,7 +186,7 @@ export default function CameraNavView({ myLocation, destination, distanceKm }) {
       {!cameraError && distanceKm != null && (
         <div className="nav-ar-distance">
           <i className="ti ti-map-pin"></i>
-          {formatDistance(distanceKm)} to go
+          {formatDistance(distanceKm)} to destination
         </div>
       )}
     </div>
