@@ -3,7 +3,7 @@ import Modal from "../components/Modal";
 import { supabase } from "../lib/supabaseClient";
 import { refreshLiveTransitData } from "../lib/transitSync";
 
-const DESTINATION_CATEGORIES = ["Historical", "Attraction", "Nature", "Beach", "University"];
+const DESTINATION_CATEGORIES = ["Historical", "Attraction", "Nature", "Beach", "University", "Mall"];
 const VERIFICATION_STATUSES = ["verified", "partially_verified", "needs_verification", "outdated"];
 
 const EMPTY_FORM = {

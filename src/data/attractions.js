@@ -190,6 +190,32 @@ export const attractions = [
     wikiTitle: "Casa Gorordo",
     nearestStopId: "colon",
   },
+  // Sources: cebudailynews.inquirer.net/602283 + en.wikipedia.org/wiki/SM_J_Mall
+  // (SM J Mall — opened 2024-10-25, the former J Centre Mall after SM Prime's
+  // acquisition); business.inquirer.net/63033 (SM City Consolacion, opened
+  // 2012). Neither is directly on the verified jeepney graph, so both jump
+  // off from sm-city, the routable node closest to the Mandaue/Consolacion
+  // corridor (the same one route 25's Liloan-bound path already runs through).
+  {
+    id: "sm-j-mall",
+    name: "SM J Mall",
+    location: "165 A.S. Fortuna St, Barangay Bakilid, Mandaue City",
+    description: "A Japanese-inspired SM mall in Mandaue reopened in 2024 on the site of the former J Centre Mall, with an outdoor izakaya dining strip and a rooftop recreation area.",
+    icon: "ti-building-store",
+    category: "Mall",
+    wikiTitle: "SM J Mall",
+    nearestStopId: "sm-city",
+  },
+  {
+    id: "sm-consolacion",
+    name: "SM City Consolacion",
+    location: "Cebu North Road, Barangay Lamac, Consolacion",
+    description: "SM Prime's second mall in Cebu province, opened in 2012 along the Liloan-bound corridor in Consolacion.",
+    icon: "ti-building-store",
+    category: "Mall",
+    wikiTitle: "SM City Consolacion",
+    nearestStopId: "sm-city",
+  },
 ];
 
 export function replaceAttractions(newAttractions) {
