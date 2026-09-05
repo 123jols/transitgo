@@ -182,7 +182,7 @@ export default function LoginPage({ onBack, onGuest, recoveryMode }) {
     setSubmitError("");
     setSubmitting(true);
     try {
-      await signUp(form.email.trim(), form.password, {
+      const { needsConfirmation } = await signUp(form.email.trim(), form.password, {
         fullName: form.fullName.trim(),
         accountType: form.accountType,
         phoneNumber: normalizePhilippineMobile(form.phoneNumber),
@@ -195,7 +195,11 @@ export default function LoginPage({ onBack, onGuest, recoveryMode }) {
           postalCode: form.postalCode.trim(),
         },
       });
-      setSignedUpMessage(true);
+      // Only show "check your email" when Supabase actually required it —
+      // with email confirmation off, signUp() already returned a live
+      // session, so the auth-state listener in AuthContext is already
+      // signing the rider in and swapping this page out on its own.
+      if (needsConfirmation) setSignedUpMessage(true);
     } catch (err) {
       setSubmitError(err.message || "Something went wrong. Please try again.");
     } finally {

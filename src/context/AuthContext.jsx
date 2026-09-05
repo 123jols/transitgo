@@ -37,9 +37,16 @@ export function AuthProvider({ children }) {
   // account type, phone, age, address) — passed as Supabase auth metadata
   // so the database trigger (see supabase/schema.sql) can populate a
   // complete profiles row in the same transaction as account creation.
+  // Returns { needsConfirmation } so the caller knows whether to show a
+  // "check your email" step: Supabase's signUp() only comes back with a
+  // real session when the project's "Confirm email" setting is off — with
+  // it on, session is null until the emailed link is clicked. Either way,
+  // a session that IS returned here already flows through
+  // onAuthStateChange above and signs the rider in immediately — no
+  // separate "log them in" call needed.
   const signUp = async (email, password, profile = {}) => {
     if (!isSupabaseConfigured) throw new Error("Cloud sync isn't configured yet.");
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -57,6 +64,7 @@ export function AuthProvider({ children }) {
       },
     });
     if (error) throw error;
+    return { needsConfirmation: !data.session };
   };
 
   const signIn = async (email, password, rememberMe = true) => {
