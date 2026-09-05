@@ -1,8 +1,9 @@
 import { stops } from "../data/db";
 import { terminals } from "../data/terminals";
 import { attractions } from "../data/attractions";
-import { findRoutesBetween } from "../utils/routing";
+import { findRoutesBetween, nearestStop } from "../utils/routing";
 import { rankBySimilarity } from "../utils/fuzzyMatch";
+import { searchCebuLandmark } from "../utils/geo";
 
 const stopById = Object.fromEntries(stops.map((s) => [s.id, s]));
 
@@ -117,6 +118,41 @@ export function resolveDestinationCandidates(query, { limit = 5 } = {}) {
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ item, score }) => ({ ...item, confidence: score }));
+}
+
+// "Are we in Cebu at all" cutoff for jumping off from a real-world landmark
+// to a known stop — same radius HomePage.jsx's own GPS-to-stop resolution
+// already uses, so a landmark match too far from any known stop is treated
+// the same way an out-of-coverage GPS fix already is.
+const MAX_LANDMARK_JUMP_KM = 20;
+
+// Last-resort destination resolution: only called once resolveDestinationCandidates
+// has already come back empty (even fuzzily) against the curated stops/
+// terminals/destinations list. Looks the query up as a real place via
+// OpenStreetMap (searchCebuLandmark) and jumps off from whichever known
+// stop is nearest to it — the same "closest reachable jump-off" pattern
+// data/attractions.js's nearestStopId already uses, just computed live
+// instead of pre-curated. Never invents a route: a network failure, no
+// OpenStreetMap match, or a real match too far from any known stop all
+// resolve to null rather than guessing.
+export async function resolveRealWorldLandmark(query) {
+  let hit;
+  try {
+    hit = await searchCebuLandmark(query);
+  } catch {
+    return null;
+  }
+  if (!hit) return null;
+
+  const stop = nearestStop(hit.lat, hit.lon, MAX_LANDMARK_JUMP_KM);
+  if (!stop) return null;
+
+  return {
+    id: `landmark-${hit.lat}-${hit.lon}`,
+    label: hit.label,
+    subtitle: `Nearby place · routes via ${stop.name}`,
+    stop,
+  };
 }
 
 export function findRoutes(fromId, toId) {

@@ -73,7 +73,15 @@ export function similarity(query, candidate) {
       Math.max(...cTokens.map((ct) => 1 - levenshtein(qt, ct) / Math.max(qt.length, ct.length)))
     );
     const avg = perTokenBest.reduce((sum, s) => sum + s, 0) / perTokenBest.length;
-    best = Math.max(best, avg * 0.95);
+    // Plain averaging lets generic shared words ("SM", "City", "Cebu") carry
+    // a query past a genuinely distinguishing word it got wrong — "SM
+    // Seaside City Cebu" would otherwise score high against "SM City Cebu
+    // Terminal" (a real, different mall) on the strength of 3 shared tokens
+    // alone. Multiplying by the worst-scoring token means one badly-matched
+    // word meaningfully drags the score down instead of being outvoted.
+    const worst = Math.min(...perTokenBest);
+    const combined = avg * (0.5 + 0.5 * worst);
+    best = Math.max(best, combined * 0.95);
   }
 
   return Math.max(0, Math.min(1, best));

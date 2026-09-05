@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addRoute, findRoutes, getPopularRoutes, getStops, resolveDestinationCandidates, searchDestinations, searchStops } from "../api/transit";
+import { addRoute, findRoutes, getPopularRoutes, getStops, resolveDestinationCandidates, resolveRealWorldLandmark, searchDestinations, searchStops } from "../api/transit";
 import { fetchAiIntent } from "../api/ai";
 import { selectDisplayRoutes } from "../utils/routing";
 import { haversineDistanceKm, reverseGeocode, shortenAddress } from "../utils/geo";
@@ -347,23 +347,44 @@ export default function HomePage() {
     }
 
     // If the rider named an explicit origin ("from Yati to Ayala"), try to
-    // resolve and apply it too — same real place-list, same confidence bar.
+    // resolve and apply it too — same real place-list, same confidence bar,
+    // then the same live-landmark fallback the destination gets below.
     if (result.origin) {
       const originMatches = resolveDestinationCandidates(result.origin, { limit: 1 });
       if (originMatches.length && originMatches[0].confidence >= 0.75) {
         selectFrom({ ...originMatches[0].stop, name: originMatches[0].label });
+      } else {
+        const originLandmark = await resolveRealWorldLandmark(result.origin);
+        if (originLandmark) selectFrom({ ...originLandmark.stop, name: originLandmark.label });
       }
     }
 
     const destinationQuery = result.destination || toQuery;
     const matches = resolveDestinationCandidates(destinationQuery);
 
-    if (matches.length === 0) {
-      setAiStatusMessage(`Couldn't find "${destinationQuery}" in TransitGo's Cebu coverage yet.`);
-    } else if (matches.length === 1 && matches[0].confidence >= 0.75) {
+    if (matches.length === 1 && matches[0].confidence >= 0.75) {
       selectDestination(matches[0]);
     } else {
-      setAiCandidates(matches);
+      // Nothing in the curated list matched confidently enough to
+      // auto-select on its own — also check whether this is actually a
+      // different real place before settling for the curated list's best
+      // (possibly wrong) guess. E.g. "SM Seaside City Cebu" fuzzily
+      // resembles the curated "SM City Cebu" entry, a real but different
+      // mall — surfacing the genuine landmark alongside it lets the rider
+      // pick the one they actually meant instead of silently getting the
+      // wrong destination.
+      const landmark = await resolveRealWorldLandmark(destinationQuery);
+      const candidates = landmark
+        ? [landmark, ...matches.filter((m) => m.stop.id !== landmark.stop.id)]
+        : matches;
+
+      if (candidates.length === 1) {
+        selectDestination(candidates[0]);
+      } else if (candidates.length > 1) {
+        setAiCandidates(candidates);
+      } else {
+        setAiStatusMessage(`Couldn't find "${destinationQuery}" in TransitGo's Cebu coverage yet.`);
+      }
     }
     setAiAsking(false);
   };

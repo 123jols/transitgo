@@ -39,6 +39,29 @@ export async function forwardGeocode(query) {
   }));
 }
 
+// Metro Cebu bounding box (Liloan south to Talisay, the western coastline
+// east to Mactan) — lon_min,lat_max,lon_max,lat_min, Nominatim's expected
+// corner order. Scopes searchCebuLandmark to real Cebu places so a query
+// like "SM Seaside" doesn't lose to a same-named place somewhere else.
+const CEBU_VIEWBOX = "123.75,10.45,124.05,10.15";
+
+// A real-world landmark lookup for whatever the rider typed that isn't in
+// TransitGo's curated stops/terminals/destinations — same public Nominatim
+// service as reverseGeocode/forwardGeocode above, scoped to Metro Cebu via
+// bounded=1 + viewbox. This is the last-resort tier api/transit.js's
+// resolveRealWorldLandmark() uses only after the curated list has already
+// come back empty (even fuzzily) — it returns the single best real match,
+// or null, and never invents a place when OpenStreetMap has nothing for it.
+export async function searchCebuLandmark(query) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=${CEBU_VIEWBOX}&bounded=1&limit=1&addressdetails=0`;
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`Landmark search failed (${res.status})`);
+  const data = await res.json();
+  if (!data.length) return null;
+  const hit = data[0];
+  return { label: shortenAddress(hit.display_name), lat: Number(hit.lat), lon: Number(hit.lon) };
+}
+
 // "250m" below 1km, "1.3km" at/above it — matches how riders actually
 // think about short walking distances instead of always showing decimal km.
 export function formatDistance(km) {
